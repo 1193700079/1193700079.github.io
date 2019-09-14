@@ -12,7 +12,7 @@
 <meta property="og:title" content="Hexo">
 <meta property="og:url" content="http://yoursite.com/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:locale" content="default">
+<meta property="og:locale" content="en">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Hexo">
   
@@ -151,6 +151,130 @@
           </div>
           <div id="js-content" class="content-ll">
             
+  
+    <article id="post-my-first-blog" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/14/my-first-blog/">&#39;my-first-blog&#39;</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/14/my-first-blog/" class="archive-article-date">
+  	<time datetime="2019-09-14T09:54:11.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-14</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/14/my-first-blog/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-test" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>数据库表</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">drop</span> <span class="keyword">table</span> <span class="keyword">user</span>;</span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="keyword">IF</span> <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> <span class="string">`user`</span>(</span><br><span class="line">   <span class="string">`id`</span> <span class="built_in">INT</span> <span class="keyword">UNSIGNED</span> AUTO_INCREMENT,</span><br><span class="line">   <span class="string">`account_id`</span> <span class="built_in">VARCHAR</span>(<span class="number">100</span>) ,</span><br><span class="line">   <span class="string">`name`</span> <span class="built_in">VARCHAR</span>(<span class="number">40</span>) ,</span><br><span class="line">   <span class="string">`token`</span> <span class="built_in">VARCHAR</span>(<span class="number">36</span>) ,</span><br><span class="line">   <span class="string">`gmt_create`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   <span class="string">`gmt_modify`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   PRIMARY <span class="keyword">KEY</span> ( <span class="string">`id`</span> )</span><br><span class="line">)<span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8;</span><br><span class="line"><span class="keyword">alter</span> <span class="keyword">table</span> <span class="keyword">user</span> <span class="keyword">add</span> <span class="keyword">column</span> 	bio <span class="built_in">varchar</span>(<span class="number">256</span>);</span><br><span class="line"><span class="keyword">alter</span> <span class="keyword">table</span> <span class="keyword">user</span> <span class="keyword">add</span> <span class="keyword">column</span> avatar_url <span class="built_in">varchar</span>(<span class="number">256</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> <span class="keyword">user</span> (account_id,<span class="keyword">name</span>,token,gmt_create,gmt_modify,bio,avatar_url)</span><br><span class="line"><span class="keyword">VALUES</span> (<span class="string">'43908730'</span>,<span class="string">'卿人'</span>,<span class="string">'c262ba07-df98-4332-8ae9-acf421a6aaf3'</span>,<span class="string">'1566718407473'</span>,<span class="string">'1566718407473'</span>,<span class="string">'nice'</span>,<span class="string">'https://avatars1.githubusercontent.com/u/43908729?v=4'</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> <span class="keyword">user</span> (account_id,<span class="keyword">name</span>,token,gmt_create,gmt_modify,bio,avatar_url)</span><br><span class="line"><span class="keyword">VALUES</span> (<span class="string">'43908729'</span>,<span class="string">'卿人'</span>,<span class="string">'c262ba07-df98-4332-8ae9-acf421a6aaf3'</span>,<span class="string">'1566718407473'</span>,<span class="string">'1566718407473'</span>,<span class="string">'nice'</span>,<span class="string">'https://avatars1.githubusercontent.com/u/43908729?v=4'</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">drop</span>  <span class="keyword">table</span> topic;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> <span class="keyword">if</span> <span class="keyword">not</span> <span class="keyword">exists</span> <span class="string">`topic`</span>(</span><br><span class="line">   <span class="string">`id`</span> <span class="built_in">INT</span> <span class="keyword">UNSIGNED</span> AUTO_INCREMENT,</span><br><span class="line">   <span class="string">`title`</span> <span class="built_in">VARCHAR</span>(<span class="number">100</span>) ,</span><br><span class="line">   <span class="string">`description`</span> <span class="built_in">text</span>,</span><br><span class="line">   <span class="string">`create_id`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`gmt_create`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   <span class="string">`gmt_modify`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   <span class="string">`comment_count`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`view_count`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`like_count`</span> <span class="built_in">int</span> ,	</span><br><span class="line">   <span class="string">`tag`</span> <span class="built_in">VARCHAR</span>(<span class="number">100</span>) ,</span><br><span class="line">   PRIMARY <span class="keyword">KEY</span> ( <span class="string">`id`</span> )</span><br><span class="line">)<span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8;</span><br><span class="line"></span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> topic (title,description,create_id,gmt_create,gmt_modify,comment_count,view_count,like_count,tag) <span class="keyword">values</span>(<span class="string">'测试用户7'</span>,<span class="string">'我是项目测试员'</span>,<span class="number">2</span>,<span class="number">1566718407473</span>,<span class="number">1566718407473</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="string">'华北理工'</span>);</span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> topic (title,description,create_id,gmt_create,gmt_modify,comment_count,view_count,like_count,tag) <span class="keyword">values</span>(<span class="string">'测试用户1'</span>,<span class="string">'我是项目测试员'</span>,<span class="number">2</span>,<span class="number">1566718407473</span>,<span class="number">1566718407473</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="string">'华北理工'</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">两表关联</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">数据库分页  [offset][value] 偏移量 以及偏移了多少</span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> topic <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">5</span>;</span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> topic <span class="keyword">limit</span> <span class="number">5</span>,<span class="number">5</span>;</span><br><span class="line"></span><br><span class="line">row 表示行</span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">COUNT</span>(column_name) <span class="keyword">FROM</span> table_name</span><br><span class="line">查询第一列的数量</span><br><span class="line"><span class="keyword">select</span> <span class="keyword">count</span>(<span class="number">1</span>) <span class="keyword">from</span> topic;</span><br><span class="line"><span class="keyword">select</span> <span class="keyword">count</span>(*) <span class="keyword">from</span> topic;</span><br></pre></td></tr></table></figure>
+<h1 id="comment表"><a href="#comment表" class="headerlink" title="comment表"></a>comment表</h1><p>id 唯一标识</p>
+<p>topic_id  所评论话题的id（两表关联 topic）</p>
+<p>commentor_id 评论人的id（两表关联 user）</p>
+<p>comment_content 评论内容</p>
+<p>like_count 点赞数</p>
+<p>type 类型 看是几级评论</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">drop</span>  <span class="keyword">table</span> <span class="keyword">comment</span>;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> <span class="keyword">if</span> <span class="keyword">not</span> <span class="keyword">exists</span> <span class="string">`comment`</span>(</span><br><span class="line">   <span class="string">`id`</span> <span class="built_in">INT</span> <span class="keyword">UNSIGNED</span> AUTO_INCREMENT,</span><br><span class="line">   <span class="string">`topic_id`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`commentor_id`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`type`</span> <span class="built_in">int</span> ,</span><br><span class="line">   <span class="string">`comment_content`</span> <span class="built_in">text</span>,</span><br><span class="line">   <span class="string">`like_count`</span> <span class="built_in">int</span>,</span><br><span class="line">   <span class="string">`gmt_create`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   <span class="string">`gmt_modify`</span> <span class="built_in">bigint</span> ,</span><br><span class="line">   PRIMARY <span class="keyword">KEY</span> ( <span class="string">`id`</span> )</span><br><span class="line">)<span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8;</span><br><span class="line"><span class="keyword">alter</span> <span class="keyword">table</span> <span class="keyword">comment</span> <span class="keyword">add</span> <span class="keyword">column</span> comment_count <span class="built_in">int</span>;</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">"topicId":1,</span><br><span class="line">"commentContnet":"测试二级回复",</span><br><span class="line">"commentorId":2,</span><br><span class="line">"type":2</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">"title":测试一下~~是不是逆序</span><br><span class="line">"description":啊啊啊</span><br><span class="line">"tag":啊</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">求热门话题 (第一种方法)</span><br><span class="line">根据从数据库中查出的话题点赞数和浏览数之和来确定高低</span><br><span class="line">取前5名</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line"></span><br><span class="line">第二种方法：</span><br><span class="line">全部取出来</span><br><span class="line">然后算出每一个的和 然后选其中<span class="number">5</span>个最大的数（排序）</span><br></pre></td></tr></table></figure>
+<p>notification表</p>
+<p>notifier 通知人</p>
+<p>reciver 接受者</p>
+<p>outerid 是回复了还是点赞了</p>
+<p>status 0表示未读 1表示已读</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">drop</span>  <span class="keyword">table</span> notification;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> <span class="keyword">if</span> <span class="keyword">not</span> <span class="keyword">exists</span> <span class="string">`notification`</span>(</span><br><span class="line">   <span class="string">`id`</span> <span class="built_in">INT</span> <span class="keyword">UNSIGNED</span> AUTO_INCREMENT,</span><br><span class="line">   <span class="string">`notifier`</span> <span class="built_in">int</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`reciver`</span> <span class="built_in">int</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`type`</span> <span class="built_in">int</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`outerid`</span> <span class="built_in">int</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`status`</span> <span class="built_in">int</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`gmt_create`</span> <span class="built_in">bigint</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   <span class="string">`gmt_modify`</span> <span class="built_in">bigint</span> <span class="keyword">default</span> <span class="number">0</span>,</span><br><span class="line">   PRIMARY <span class="keyword">KEY</span> ( <span class="string">`id`</span> )</span><br><span class="line">)<span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8;</span><br><span class="line"></span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> notification (notifier,reciver) <span class="keyword">values</span>(<span class="number">1</span>,<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/14/test/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
   
     <article id="post-杨瑞卿的第一篇blog" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">

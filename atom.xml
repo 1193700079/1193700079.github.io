@@ -3,11 +3,11 @@
   <title>卿人 Blog</title>
   
   
-  <link href="http://example.com/atom.xml" rel="self"/>
+  <link href="https://1193700079.github.io/atom.xml" rel="self"/>
   
-  <link href="http://example.com/"/>
+  <link href="https://1193700079.github.io/"/>
   <updated>2021-12-16T12:25:58.844Z</updated>
-  <id>http://example.com/</id>
+  <id>https://1193700079.github.io/</id>
   
   <author>
     <name>RuiQing Yang</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>剑指 Offer II 017. 含有所有字符的最短字符串</title>
-    <link href="http://example.com/2021/12/16/my-first-article/"/>
-    <id>http://example.com/2021/12/16/my-first-article/</id>
+    <link href="https://1193700079.github.io/my-first-article.html"/>
+    <id>https://1193700079.github.io/my-first-article.html</id>
     <published>2021-12-16T11:02:54.000Z</published>
     <updated>2021-12-16T12:25:58.844Z</updated>
     
@@ -28,10 +28,10 @@
     
     
     
-    <category term="算法刷题" scheme="http://example.com/categories/%E7%AE%97%E6%B3%95%E5%88%B7%E9%A2%98/"/>
+    <category term="算法刷题" scheme="https://1193700079.github.io/categories/%E7%AE%97%E6%B3%95%E5%88%B7%E9%A2%98/"/>
     
     
-    <category term="leetcode" scheme="http://example.com/tags/leetcode/"/>
+    <category term="leetcode" scheme="https://1193700079.github.io/tags/leetcode/"/>
     
   </entry>
   

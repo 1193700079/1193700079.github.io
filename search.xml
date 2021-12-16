@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>How to use hexo</title>
+    <url>/2021/12/16/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server-本地运行"><a href="#Run-server-本地运行" class="headerlink" title="Run server    本地运行"></a>Run server    本地运行</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br><span class="line">or</span><br><span class="line">$ hexo s</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files-生成html静态文件"><a href="#Generate-static-files-生成html静态文件" class="headerlink" title="Generate static files  生成html静态文件"></a>Generate static files  生成html静态文件</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br><span class="line">or</span><br><span class="line">$ hexo g</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites-一键部署"><a href="#Deploy-to-remote-sites-一键部署" class="headerlink" title="Deploy to remote sites  一键部署"></a>Deploy to remote sites  一键部署</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br><span class="line">or</span><br><span class="line">$ hexo d</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+<h3 id="if-you-want-to-learn-more-see-bilibli"><a href="#if-you-want-to-learn-more-see-bilibli" class="headerlink" title="if you want to learn more  see bilibli"></a>if you want to learn more  see bilibli</h3><p>More info: <a href="https://www.bilibili.com/video/BV1mU4y1j72n?p=5&spm_id_from=pageDriver">xixi</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>my first article</title>
+    <url>/2021/12/16/my-first-article/</url>
+    <content><![CDATA[<p>我是短小精悍的文章摘要(๑•̀ㅂ•́) ✧</p>
+<span id="more"></span>
+
+<h2 id="我的测试呀"><a href="#我的测试呀" class="headerlink" title="我的测试呀"></a>我的测试呀</h2>]]></content>
+      <tags>
+        <tag>测试</tag>
+      </tags>
+  </entry>
+</search>

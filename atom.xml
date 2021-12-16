@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>卿人 Blog</title>
+  
+  
+  <link href="http://example.com/atom.xml" rel="self"/>
+  
+  <link href="http://example.com/"/>
+  <updated>2021-12-16T11:04:24.535Z</updated>
+  <id>http://example.com/</id>
+  
+  <author>
+    <name>RuiQing Yang</name>
+    
+  </author>
+  
+  <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>my first article</title>
+    <link href="http://example.com/2021/12/16/my-first-article/"/>
+    <id>http://example.com/2021/12/16/my-first-article/</id>
+    <published>2021-12-16T11:02:54.000Z</published>
+    <updated>2021-12-16T11:04:24.535Z</updated>
+    
+    
+    <summary type="html">&lt;p&gt;我是短小精悍的文章摘要(๑•̀ㅂ•́) ✧&lt;/p&gt;</summary>
+    
+    
+    
+    
+    <category term="测试" scheme="http://example.com/tags/%E6%B5%8B%E8%AF%95/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>How to use hexo</title>
+    <link href="http://example.com/2021/12/16/hello-world/"/>
+    <id>http://example.com/2021/12/16/hello-world/</id>
+    <published>2021-12-16T10:11:08.154Z</published>
+    <updated>2021-12-16T11:28:32.064Z</updated>
+    
+    
+      
+      
+        
+        
+    <summary type="html">&lt;p&gt;Welcome to &lt;a href=&quot;https://hexo.io/&quot;&gt;Hexo&lt;/a&gt;! This is your very first post. Check &lt;a href=&quot;https://hexo.io/docs/&quot;&gt;documentation&lt;/a&gt;</summary>
+        
+      
+    
+    
+    
+    
+  </entry>
+  
+</feed>

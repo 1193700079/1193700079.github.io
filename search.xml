@@ -1,6 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>fetch springboot oss指南</title>
+    <url>/fetch-springboot-oss%E6%8C%87%E5%8D%97.html</url>
+    <content><![CDATA[<p>这篇主要是介绍实验室项目中<br>fetch springboot oss的使用指南</p>
+<span id="more"></span>
+<h1 id="通信的流程图"><a href="#通信的流程图" class="headerlink" title="通信的流程图"></a>通信的流程图</h1><p><a href="https://imgtu.com/i/TMfy0f"><img src="https://s4.ax1x.com/2021/12/21/TMfy0f.jpg" alt="TMfy0f.jpg"></a></p>
+<h1 id="前端部分"><a href="#前端部分" class="headerlink" title="前端部分"></a>前端部分</h1><ul>
+<li>关键<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">headers: <span class="keyword">new</span> Headers(&#123;&#125;)   <span class="comment">//不需要写 chrome浏览器在底层会自动弄好</span></span><br></pre></td></tr></table></figure></li>
+<li>学会区分下面这些媒体<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="string">&#x27;application/x-www-form-urlencoded&#x27;</span></span><br><span class="line"><span class="string">&#x27;multipart/form-data&#x27;</span></span><br><span class="line"><span class="string">&#x27;application/json&#x27;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li>FormData里的数据要用 fd.get(‘file’)去取<h2 id="前端代码"><a href="#前端代码" class="headerlink" title="前端代码"></a>前端代码</h2><figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> uploadOSS = <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> picture = <span class="built_in">document</span>.getElementById(<span class="string">&#x27;upimg&#x27;</span>).files;</span><br><span class="line">    <span class="keyword">let</span> fd = <span class="keyword">new</span> FormData();</span><br><span class="line">    fd.append(<span class="string">&#x27;file&#x27;</span>, picture[<span class="number">0</span>]); <span class="comment">//这里的file要与后台@RequestParam的参数值相对应</span></span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">&#x27;yrq&#x27;</span>, fd.get(<span class="string">&#x27;file&#x27;</span>));</span><br><span class="line">    fetch(<span class="string">&#x27;/apiOSSuploadFile/&#x27;</span>, &#123;</span><br><span class="line">      <span class="attr">method</span>: <span class="string">&#x27;POST&#x27;</span>,</span><br><span class="line">      <span class="attr">body</span>: fd,</span><br><span class="line">      <span class="attr">mode</span>: <span class="string">&#x27;cors&#x27;</span>,</span><br><span class="line">      <span class="attr">headers</span>: <span class="keyword">new</span> Headers(&#123;</span><br><span class="line">        <span class="comment">//   https://blog.csdn.net/fksfdh/article/details/106153248</span></span><br><span class="line">        <span class="comment">// &#x27;Content-Type&#x27;: &#x27;application/x-www-form-urlencoded&#x27;,//默认的表单提交格式(：只能上传键值对，并且键值对都是间隔分开的。)</span></span><br><span class="line">        <span class="comment">// &#x27;Content-Type&#x27;: &#x27;multipart/form-data&#x27;, //既可以上传文件等二进制数据，也可以上传表单键值对，只是最后会转化为一条信息</span></span><br><span class="line">        <span class="comment">//   Accept: &#x27;application/json&#x27;,</span></span><br><span class="line">      &#125;),</span><br><span class="line">    &#125;)</span><br><span class="line">      .then(<span class="function">(<span class="params">response</span>) =&gt;</span> response.text())</span><br><span class="line">      .then(<span class="function">(<span class="params">data</span>) =&gt;</span> &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(data);</span><br><span class="line">      &#125;)</span><br><span class="line">      .catch(<span class="function"><span class="keyword">function</span> (<span class="params">e</span>) </span>&#123;</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">&#x27;error:&#x27;</span> + e);</span><br><span class="line">      &#125;);</span><br><span class="line">  &#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<hr>
+<h1 id="后端部分"><a href="#后端部分" class="headerlink" title="后端部分"></a>后端部分</h1><ul>
+<li>关键是<blockquote>
+<p>指定consumes 和 @RequestParam(“file”) MultipartFile file</p>
+</blockquote>
+</li>
+<li>上传到bucket中img中</li>
+<li>AliyunOssResult类和AliyunOSSUtil类就不细说<h2 id="核心业务代码（上传文件）"><a href="#核心业务代码（上传文件）" class="headerlink" title="核心业务代码（上传文件）"></a>核心业务代码（上传文件）</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 上传文件-指定目录</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="comment">//consumes 是指接受的格式</span></span><br><span class="line">   <span class="comment">//produces 是指返回的格式</span></span><br><span class="line">   <span class="meta">@PostMapping(value=&quot;/uploadFile&quot;,produces = &quot;application/json;charset=UTF-8&quot;,consumes = MediaType.MULTIPART_FORM_DATA_VALUE)</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> AliyunOssResult <span class="title">uploadFile</span><span class="params">(<span class="meta">@RequestParam(&quot;file&quot;)</span> MultipartFile file)</span> </span>&#123;</span><br><span class="line">       System.out.println(<span class="string">&quot;上传到OSS&quot;</span>);</span><br><span class="line">       <span class="keyword">return</span> AliyunOSSUtil.uploadFile(file, <span class="string">&quot;img/&quot;</span> + file.getOriginalFilename());</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="阿里云OSS配置教程"><a href="#阿里云OSS配置教程" class="headerlink" title="阿里云OSS配置教程"></a>阿里云OSS配置教程</h2><p>我就不重复造轮子<br>贴上链接：（写的不错 很良心的文章）<br><a href="https://blog.csdn.net/z1353095373/article/details/108362048">https://blog.csdn.net/z1353095373/article/details/108362048</a></p>
+<h2 id="最终的效果展示"><a href="#最终的效果展示" class="headerlink" title="最终的效果展示"></a>最终的效果展示</h2><p><a href="https://imgtu.com/i/TMho2d"><img src="https://s4.ax1x.com/2021/12/21/TMho2d.jpg" alt="TMho2d.jpg"></a></p>
+]]></content>
+      <categories>
+        <category>算法接入平台</category>
+      </categories>
+      <tags>
+        <tag>springboot+react</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>算法接入平台-OCR模块</title>
     <url>/%E7%AE%97%E6%B3%95%E6%8E%A5%E5%85%A5%E5%B9%B3%E5%8F%B0.html</url>
     <content><![CDATA[<p>这篇主要是介绍实验室项目中<br>OCR 模块的部分源代码</p>

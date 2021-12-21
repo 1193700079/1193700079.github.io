@@ -6,7 +6,7 @@
   <link href="https://1193700079.github.io/atom.xml" rel="self"/>
   
   <link href="https://1193700079.github.io/"/>
-  <updated>2021-12-20T01:09:05.253Z</updated>
+  <updated>2021-12-21T12:27:14.790Z</updated>
   <id>https://1193700079.github.io/</id>
   
   <author>
@@ -15,6 +15,25 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>fetch springboot oss指南</title>
+    <link href="https://1193700079.github.io/fetch-springboot-oss%E6%8C%87%E5%8D%97.html"/>
+    <id>https://1193700079.github.io/fetch-springboot-oss%E6%8C%87%E5%8D%97.html</id>
+    <published>2021-12-21T11:29:59.000Z</published>
+    <updated>2021-12-21T12:27:14.790Z</updated>
+    
+    
+    <summary type="html">&lt;p&gt;这篇主要是介绍实验室项目中&lt;br&gt;fetch springboot oss的使用指南&lt;/p&gt;</summary>
+    
+    
+    
+    <category term="算法接入平台" scheme="https://1193700079.github.io/categories/%E7%AE%97%E6%B3%95%E6%8E%A5%E5%85%A5%E5%B9%B3%E5%8F%B0/"/>
+    
+    
+    <category term="springboot+react" scheme="https://1193700079.github.io/tags/springboot-react/"/>
+    
+  </entry>
   
   <entry>
     <title>算法接入平台-OCR模块</title>

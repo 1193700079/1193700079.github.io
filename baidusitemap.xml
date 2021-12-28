@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://1193700079.github.io/css-study-01.html</loc>
+    <lastmod>2021-12-28</lastmod>
+  </url>
+  <url>
+    <loc>https://1193700079.github.io/mysql-linux.html</loc>
+    <lastmod>2021-12-22</lastmod>
+  </url>
+  <url>
     <loc>https://1193700079.github.io/fetch-springboot-oss%E6%8C%87%E5%8D%97.html</loc>
     <lastmod>2021-12-21</lastmod>
   </url>

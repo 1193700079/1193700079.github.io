@@ -3,7 +3,10 @@
   <entry>
     <title>css study 01</title>
     <url>/css-study-01.html</url>
-    <content><![CDATA[<h1 id="字体："><a href="#字体：" class="headerlink" title="字体："></a>字体：</h1><figure class="highlight css"><table><tr><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">font-style:  italic ,normal </span></span><br><span class="line"><span class="comment">font-weight:  bold(700)  bolder lighter normal(400)</span></span><br><span class="line"><span class="comment">font-size:  xxpx;  默认是16px  标题一般会具有特殊性</span></span><br><span class="line"><span class="comment">line-height: 12px/1.5    行高是其1.5倍 这样在开发中更加常见</span></span><br><span class="line"><span class="comment">font-family: &#x27;微软雅黑&#x27;,&#x27;Microsoft YaHei&#x27; , &#x27;Times New Roman&#x27;，。。#浏览器会去检查</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="comment">/* 复合属性 font 顺序不能变（font-size 和font-family是不能省略的 ） */</span></span><br><span class="line"><span class="comment">/* font: font-style  font-weight  font-size/line-height  font-family; */</span></span><br><span class="line">xx &#123;</span><br><span class="line"><span class="attribute">font</span>: italic <span class="number">700</span> <span class="number">16px</span>/<span class="number">1.5</span> <span class="string">&#x27;Microsoft yahei&#x27;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+    <content><![CDATA[<p>介绍一些css基础知识</p>
+<span id="more"></span>
+
+<h1 id="字体："><a href="#字体：" class="headerlink" title="字体："></a>字体：</h1><figure class="highlight css"><table><tr><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">font-style:  italic ,normal </span></span><br><span class="line"><span class="comment">font-weight:  bold(700)  bolder lighter normal(400)</span></span><br><span class="line"><span class="comment">font-size:  xxpx;  默认是16px  标题一般会具有特殊性</span></span><br><span class="line"><span class="comment">line-height: 12px/1.5    行高是其1.5倍 这样在开发中更加常见</span></span><br><span class="line"><span class="comment">font-family: &#x27;微软雅黑&#x27;,&#x27;Microsoft YaHei&#x27; , &#x27;Times New Roman&#x27;，。。#浏览器会去检查</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="comment">/* 复合属性 font 顺序不能变（font-size 和font-family是不能省略的 ） */</span></span><br><span class="line"><span class="comment">/* font: font-style  font-weight  font-size/line-height  font-family; */</span></span><br><span class="line">xx &#123;</span><br><span class="line"><span class="attribute">font</span>: italic <span class="number">700</span> <span class="number">16px</span>/<span class="number">1.5</span> <span class="string">&#x27;Microsoft yahei&#x27;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
 <h1 id="文本："><a href="#文本：" class="headerlink" title="文本："></a>文本：</h1><figure class="highlight css"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* </span></span><br><span class="line"><span class="comment">color:  #ffffff (经常用，利用吸管工具)    or rgb(255,0,0) 设置字体颜色</span></span><br><span class="line"><span class="comment">text-align  只能调整文本的水平  left right center</span></span><br><span class="line"><span class="comment">text-decoration:  underline line-through overline (样式很丑) none</span></span><br><span class="line"><span class="comment">text-decoration一般是把a标签的下划线去掉text-indent: 20px  首行缩进</span></span><br><span class="line"><span class="comment">text-indent: 2em   em是一个相对单位,当前元素的一个文字大小</span></span><br><span class="line"><span class="comment">line-height:   </span></span><br><span class="line"><span class="comment">行间距 26px表示的含义 其中5上间距 16中间字体的大小 5下间距  </span></span><br><span class="line"><span class="comment">可以用工具去测量    也可以是1.5 这样更加常见</span></span><br><span class="line"><span class="comment">*/</span>  </span><br><span class="line"><span class="selector-tag">a</span> &#123;</span><br><span class="line">  <span class="attribute">text-decoration</span>: none</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -155,16 +158,30 @@
 
 
 ]]></content>
+      <categories>
+        <category>css学习之路</category>
+      </categories>
+      <tags>
+        <tag>css</tag>
+      </tags>
   </entry>
   <entry>
     <title>mysql linux</title>
     <url>/mysql-linux.html</url>
-    <content><![CDATA[<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./mysqld --user=mysql --basedir=/media/disk3/yrq/mysql/mysql-8.0.20 --datadir=/media/disk3/yrq/mysql/mysql-8.0.20/data/ --initialize</span><br></pre></td></tr></table></figure>
+    <content><![CDATA[<p>介绍一下在不同服务器上安装MySql</p>
+<span id="more"></span>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./mysqld --user=mysql --basedir=/media/disk3/yrq/mysql/mysql-8.0.20 --datadir=/media/disk3/yrq/mysql/mysql-8.0.20/data/ --initialize</span><br></pre></td></tr></table></figure>
 
 <p>ubuntu chkconfig 命令<br><a href="https://blog.csdn.net/weixin_40405198/article/details/79578290">https://blog.csdn.net/weixin_40405198/article/details/79578290</a></p>
 <p>centos 安装mysql<br><a href="https://www.cnblogs.com/kc19941205/p/14721580.html">https://www.cnblogs.com/kc19941205/p/14721580.html</a></p>
 <p>ubuntu 安装mysql<br><a href="https://blog.csdn.net/weixin_44129085/article/details/104481986">https://blog.csdn.net/weixin_44129085/article/details/104481986</a></p>
 ]]></content>
+      <categories>
+        <category>环境配置</category>
+      </categories>
+      <tags>
+        <tag>mysql</tag>
+      </tags>
   </entry>
   <entry>
     <title>fetch springboot osss使用指南</title>

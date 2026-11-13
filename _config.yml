@@ -1,0 +1,58 @@
+# Personal site based on Academic Pages (MIT).
+# Profile content lives in _data/profile.json; the previous Hexo blog is retained.
+locale: "en-US"
+title: "Ruiqing Yang · 杨瑞卿"
+name: "Ruiqing Yang"
+description: "LLM engineer working on language and multimodal model tuning, AI agents, inference deployment, and independent AI products."
+url: "https://1193700079.github.io"
+baseurl: ""
+repository: "1193700079/1193700079.github.io"
+site_theme: "default"
+timezone: "Asia/Shanghai"
+author:
+  name: "Ruiqing Yang"
+  avatar: "/assets/profile/portrait.jpg"
+  bio: "LLM Engineer · AI Agents & Multimodal Generation"
+  location: "Guangzhou, China"
+  email: "yrq991121@gmail.com"
+  github: "1193700079"
+markdown: kramdown
+kramdown:
+  input: GFM
+  auto_ids: true
+highlighter: rouge
+sass:
+  sass_dir: _sass
+  style: compressed
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-redirect-from
+  - jekyll-gist
+  - jekyll-paginate
+  - jemoji
+include:
+  - .well-known
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - README.md
+  - LICENSE
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - scripts
+  - screenshot
+  - sitemap.xml
+  - _site
+  - .github
+  - .sass-cache
+  - .jekyll-cache
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: []
+  blanklines: false

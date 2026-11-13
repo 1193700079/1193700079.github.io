@@ -1,0 +1,405 @@
+{
+  "name_en": "Ruiqing Yang",
+  "name_zh": "杨瑞卿",
+  "email": "yrq991121@gmail.com",
+  "location": {
+    "en": "Guangzhou, China",
+    "zh": "中国 · 广州"
+  },
+  "role": {
+    "en": "LLM Engineer · AI Agents & Multimodal Generation",
+    "zh": "大模型算法工程师 · AI Agent 与多模态生成"
+  },
+  "intro": {
+    "en": "I am an LLM engineer based in Guangzhou, working on language and multimodal model tuning, AI agents, and inference deployment. My work spans model training, CUDA operator development, and product delivery, alongside independent AI products developed in my spare time.",
+    "zh": "我是杨瑞卿，现居广州，专注于大语言模型与多模态模型调优、AI Agent 及推理部署。我的实践覆盖模型训练、CUDA 算子开发和产品交付，也在业余时间开发个人 AI 产品。"
+  },
+  "hero_title": {
+    "en": "Model tuning, AI agents, and products",
+    "zh": "模型调优、智能体与 AI 产品"
+  },
+  "focus": [
+    {
+      "en": "Language & multimodal model tuning",
+      "zh": "语言与多模态模型调优"
+    },
+    {
+      "en": "AI agents & workflow automation",
+      "zh": "AI Agent 与工作流自动化"
+    },
+    {
+      "en": "Inference deployment & CUDA operators",
+      "zh": "推理部署与 CUDA 算子"
+    },
+    {
+      "en": "Scene text recognition",
+      "zh": "自然场景文本识别"
+    }
+  ],
+  "metrics": [
+    {
+      "value": "2B",
+      "label": {
+        "en": "Xcoder tokens / day",
+        "zh": "Xcoder 日均 Token"
+      },
+      "note": {
+        "en": "2 billion tokens/day including cached tokens; average daily platform token usage.",
+        "zh": "日均 20 亿 Token（含缓存 Token），口径为平台 Token 用量。"
+      }
+    },
+    {
+      "value": "AAAI",
+      "label": {
+        "en": "2025 · Second-author paper",
+        "zh": "2025 · 第二作者论文"
+      },
+      "note": {
+        "en": "Ship license plate recognition research · CCF A conference.",
+        "zh": "复杂场景船牌文本识别研究 · CCF A 类会议。"
+      }
+    },
+    {
+      "value": "10+",
+      "label": {
+        "en": "Customers served",
+        "zh": "服务客户"
+      },
+      "note": {
+        "en": "Customer delivery at Alibaba Cloud, mainly for global small and medium-sized businesses.",
+        "zh": "阿里云客户交付工作，主要服务全球中小企业。"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "id": "voxora",
+      "title": "Voxora",
+      "tagline": {
+        "en": "AI characters and video creation",
+        "zh": "AI 角色与视频创作平台"
+      },
+      "description": {
+        "en": "An independent product developed in my spare time, combining image generation, video generation, and an infinite canvas. All platform models are deployed on local GPUs, with LoRA training and ComfyUI workflow tuning for specific creative scenarios.",
+        "zh": "业余时间开发的个人产品，整合图像生成、视频生成与无限画布。平台模型均基于本地 GPU 部署，面向特定创作场景开展 LoRA 训练，并基于 ComfyUI 进行工作流编排与定向调优。"
+      },
+      "url": "https://ic.xshow.live",
+      "tags": [
+        "LoRA",
+        "ComfyUI",
+        "Local GPU",
+        "Multimodal Generation"
+      ],
+      "highlights": [
+        {
+          "en": "Deploy all platform models on local GPUs and train LoRA models for specific creative scenarios.",
+          "zh": "将平台模型部署于本地 GPU，面向特定创作场景开展 LoRA 训练。"
+        },
+        {
+          "en": "Build image and video generation workflows in ComfyUI, tuning generation parameters and processing steps for target scenarios.",
+          "zh": "基于 ComfyUI 搭建图像与视频生成工作流，围绕目标场景优化生成参数和处理流程。"
+        },
+        {
+          "en": "Develop an end-to-end video generation and editing framework with natural-language revisions, connecting asset generation, content arrangement, and iterative editing on an infinite canvas.",
+          "zh": "开发支持自然语言对话修改的端到端视频生成与编辑框架，结合无限画布串联素材生成、内容编排与多轮编辑。"
+        }
+      ]
+    },
+    {
+      "id": "xcoder",
+      "title": "Xcoder",
+      "tagline": {
+        "en": "AI coding model services",
+        "zh": "AI 编程模型服务平台"
+      },
+      "description": {
+        "en": "An independent product developed and launched in my spare time, providing coding model services through an OpenAI-compatible API and tiered subscriptions. Average daily platform usage is 2 billion tokens/day including cached tokens.",
+        "zh": "业余时间创建并上线的个人产品，通过兼容 OpenAI 的 API 和分层订阅提供 Coding 大模型服务。平台日均 Token 用量达 20 亿（含缓存 Token）。"
+      },
+      "url": "https://xcodex.vip",
+      "tags": [
+        "Coding Models",
+        "OpenAI-compatible API",
+        "Streaming",
+        "Tool Calling"
+      ],
+      "highlights": [
+        {
+          "en": "Build and operate a coding model service platform with tiered subscriptions.",
+          "zh": "创建并运营面向开发者的 Coding 大模型服务平台，提供分层订阅服务。"
+        },
+        {
+          "en": "Provide an OpenAI-compatible API with streaming responses and tool calling.",
+          "zh": "提供兼容 OpenAI 的 API，支持流式响应与工具调用。"
+        },
+        {
+          "en": "Support Codex, Cursor, Cline, and OpenCode for code generation, refactoring, debugging, and test writing.",
+          "zh": "适配 Codex、Cursor、Cline、OpenCode 等工具，覆盖代码生成、重构、调试与测试编写。"
+        }
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "company": {
+        "en": "Alibaba Cloud, Alibaba Group",
+        "zh": "阿里巴巴 · 阿里云智能集团"
+      },
+      "role": {
+        "en": "Algorithm SA-TL / LLM Algorithm Engineer · Alibaba Cloud International",
+        "zh": "阿里云国际｜算法 SA-TL / 大模型 AI 算法工程师"
+      },
+      "period": "2025.02 — Present / 至今",
+      "bullets": [
+        {
+          "en": "Tune Qwen3 models, including Qwen3.8-27B Coding enhancements to support Qoder and Qwen3.6-35B-A3B optimization for the Smart Green Channel (智慧绿通) use case.",
+          "zh": "负责 Qwen3 系列调优，开展 Qwen3.8-27B Coding 能力增强，为 Qoder 提供编程模型支持；面向智慧绿通场景优化 Qwen3.6-35B-A3B。"
+        },
+        {
+          "en": "Tune Z-Image, Qwen-Image 2.1, Wan 2.5 / 2.6, and MiniMax H3 for image generation, video generation, and digital-avatar lip synchronization.",
+          "zh": "调优 Z-Image、Qwen-Image 2.1、Wan 2.5 / 2.6 与 MiniMax H3，覆盖图像、视频生成及数字人口型优化。"
+        },
+        {
+          "en": "Fine-tune CosyVoice 2.5-0.5B for Cantonese text-to-speech and create a Cantonese Seed-TTS test set for evaluation and iteration.",
+          "zh": "微调 CosyVoice 2.5-0.5B 粤语 TTS 模型，制作 Seed-TTS 粤语测试集，支持效果评测与迭代。"
+        },
+        {
+          "en": "Develop Telegram and WhatsApp bots for stock analysis and Bitcoin information retrieval; build an IM-bot AIOps system and an MCP service integrating nearly 100 internal OpenAPIs.",
+          "zh": "开发 Telegram / WhatsApp Bot，支持股票分析与比特币信息获取；构建 IM Bot 运维系统，开发集成近百个内部 OpenAPI 的 MCP 服务。"
+        },
+        {
+          "en": "Develop an LDR Leads Agent for industry-based customer outreach; build Dify and n8n workflows and NotebookLM-like services that turn knowledge bases into podcasts, digital-avatar explainer videos, and presentation slides.",
+          "zh": "开发 LDR Leads Agent，基于行业分类支持客户自动触达；搭建 Dify、n8n 工作流及类 NotebookLM 服务，支持知识库转播客、数字人讲解视频与 PPT。"
+        },
+        {
+          "en": "Serve more than 10 customers, including Deacons, Candy AI, Reclip, and universities in Türkiye, primarily global small and medium-sized businesses.",
+          "zh": "服务 Deacons、Candy AI、Reclip、土耳其高校等十余家客户，以全球中小企业为主。"
+        }
+      ]
+    },
+    {
+      "company": {
+        "en": "Shumei Technology (Beijing)",
+        "zh": "北京数美时代科技有限公司"
+      },
+      "role": {
+        "en": "Algorithm Engineer · Tianjing Vision Team",
+        "zh": "算法工程师｜天净视觉组"
+      },
+      "period": "2024.12 — 2025.02",
+      "bullets": [
+        {
+          "en": "Serve as technical lead for OCR and object detection in content moderation, including politically sensitive content, sexual content, and promotional redirects; handle data selection and cleaning, model iteration, architecture updates, and difficult customer cases.",
+          "zh": "担任 OCR 技术负责人及物品检测负责人，面向涉政、色情、广告导流等内容审核场景，负责数据筛选清洗、模型迭代与架构更新，结合客户需求解决疑难样本。"
+        },
+        {
+          "en": "Deploy and automate model updates for international SaaS clusters on L20, A10, and V100 GPUs, supporting customers including Xiaohongshu, Xiaomi, iFLYTEK, Dewu, BYD, vivo, and OPPO.",
+          "zh": "负责国际 SaaS 集群模型部署与自动化更新，覆盖 L20、A10、V100 等 GPU；支撑小红书、小米、科大讯飞、得物、比亚迪、vivo、OPPO 等客户。"
+        }
+      ]
+    },
+    {
+      "company": {
+        "en": "Brain and Intelligence Lab, Tsinghua University",
+        "zh": "清华大学脑与智能实验室"
+      },
+      "role": {
+        "en": "Algorithm Engineer",
+        "zh": "算法工程师"
+      },
+      "period": "2024.03 — 2024.11",
+      "bullets": [
+        {
+          "en": "Conduct full-parameter training and LoRA fine-tuning of Llama, Qwen, and Mistral with C-RLFT on eight H800 GPUs, and evaluate models with OpenCompass; develop custom JAX / CUDA operators for BF16 sparse matrix multiplication and spiking neural network training.",
+          "zh": "基于 C-RLFT 在 8 卡 H800 上开展 Llama、Qwen、Mistral 全参数训练与 LoRA 微调，使用 OpenCompass 评测；编写 JAX / CUDA 自定义算子，支持 BF16 稀疏矩阵乘法及脉冲神经网络训练。"
+        },
+        {
+          "en": "Deploy OpenChat 3.6 on Sugon servers and Iluvatar CoreX GPUs using vLLM, Ollama, and llama.cpp; develop function-calling, RAG, role-playing, memory-storage, and Unity interaction applications.",
+          "zh": "部署 OpenChat 3.6 至国产曙光服务器与天数智芯 GPU，使用 vLLM、Ollama、llama.cpp；开发 Function Calling、RAG、角色扮演、记忆存储与 Unity 交互应用。"
+        },
+        {
+          "en": "Maintain the Neurai brain-inspired computing framework and AIOS application integrations; use GitHub Actions for code standards and Sphinx with AI translation for project documentation.",
+          "zh": "维护 Neurai 类脑框架与 AIOS 应用集成，使用 GitHub Actions 管理代码规范，结合 Sphinx 与 AI 翻译生成项目文档。"
+        }
+      ]
+    },
+    {
+      "company": {
+        "en": "Mech-Mind Robotics (Beijing)",
+        "zh": "梅卡曼德（北京）机器人科技有限公司"
+      },
+      "role": {
+        "en": "Deep Learning Computer Vision Intern",
+        "zh": "深度学习视觉算法实习生"
+      },
+      "period": "2023.08 — 2024.02",
+      "bullets": [
+        {
+          "en": "Develop the ML-DLK deep learning C++ SDK and a PyTorch → ONNX → ONNX Runtime deployment pipeline; implement custom CUDA operators such as DeformConv2D and deploy 3D point-cloud algorithms and SegGPT.",
+          "zh": "研发 ML-DLK 深度学习算法 C++ SDK，完成 PyTorch → ONNX → ONNX Runtime 部署，编写 DeformConv2D 等 CUDA 算子，并部署 3D 点云算法与 SegGPT。"
+        },
+        {
+          "en": "Compare FP16 / FP32 accuracy, GPU memory usage, and inference latency across TensorRT, OpenVINO, and ONNX Runtime, with visual checks of model outputs.",
+          "zh": "对比 TensorRT、OpenVINO、ONNX Runtime 的 FP16 / FP32 精度、显存与推理延迟，进行模型输出可视化验证。"
+        }
+      ]
+    }
+  ],
+  "publications": [
+    {
+      "id": "ship-license-plate-aaai-2025",
+      "title": "Towards Ship License Plate Recognition in the Wild: A Large Benchmark and Strong Baseline",
+      "venue": "AAAI 2025",
+      "year": 2025,
+      "authors_note": {
+        "en": "Second author",
+        "zh": "第二作者"
+      },
+      "description": {
+        "en": "Research on ship license plate recognition in challenging real-world scenes, with a dataset of 36,000 real-scene images and a recognition method drawing on CLIP and MAE. The project reports 84% recognition accuracy, compared with 70% for GPT-4o in the same project evaluation; these figures apply to this task and evaluation setting. Related patent publication: CN119251820A.",
+        "zh": "面向复杂真实场景的船牌文本识别研究，发布包含 3.6 万张真实场景图像的数据集，并基于 CLIP 与 MAE 思想构建识别方法。该项目报告的识别准确率为 84%，GPT-4o 在该项目对照评测中为 70%；这些数字仅对应这一任务与评测设置。相关专利公开文献：CN119251820A。"
+      },
+      "url": "https://ojs.aaai.org/index.php/AAAI/article/view/32569",
+      "tags": [
+        "OCR",
+        "Scene Text Recognition",
+        "CLIP",
+        "MAE",
+        "CCF A"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": {
+        "en": "Zhejiang Gongshang University",
+        "zh": "浙江工商大学"
+      },
+      "degree": {
+        "en": "Academic Master's Degree in Computer Science and Technology",
+        "zh": "计算机科学与技术 · 学术硕士"
+      },
+      "period": "2021.09 — 2024.06",
+      "note": {
+        "en": "Top 5% in the program's comprehensive ranking; research focused on OCR in complex natural scenes.",
+        "zh": "专业综合排名前 5%；研究方向为复杂自然场景 OCR。"
+      }
+    },
+    {
+      "school": {
+        "en": "North China University of Science and Technology",
+        "zh": "华北理工大学"
+      },
+      "degree": {
+        "en": "Bachelor's Degree in Communication Engineering",
+        "zh": "通信工程 · 本科"
+      },
+      "period": "2017.09 — 2021.06",
+      "note": {
+        "en": "Top 5% in the program's comprehensive ranking; passed CET-4 and CET-6.",
+        "zh": "专业综合排名前 5%；通过 CET-4 / CET-6。"
+      }
+    }
+  ],
+  "skills": [
+    {
+      "label": {
+        "en": "Model training & fine-tuning",
+        "zh": "模型训练与微调"
+      },
+      "items": [
+        "PyTorch",
+        "DeepSpeed",
+        "Hugging Face",
+        "LLaMA-Factory",
+        "Full-parameter training",
+        "LoRA"
+      ]
+    },
+    {
+      "label": {
+        "en": "Model architectures",
+        "zh": "模型架构"
+      },
+      "items": [
+        "Transformer",
+        "Mamba"
+      ]
+    },
+    {
+      "label": {
+        "en": "Inference & engineering",
+        "zh": "推理与工程"
+      },
+      "items": [
+        "C++",
+        "Python",
+        "Java",
+        "JavaScript",
+        "Custom CUDA operators",
+        "TensorRT",
+        "OpenVINO",
+        "ONNX Runtime",
+        "vLLM",
+        "llama.cpp",
+        "Linux",
+        "Docker Compose"
+      ]
+    },
+    {
+      "label": {
+        "en": "AI agents & workflows",
+        "zh": "AI Agent 与工作流"
+      },
+      "items": [
+        "MCP",
+        "Function Calling",
+        "RAG",
+        "Dify",
+        "n8n",
+        "ComfyUI"
+      ]
+    },
+    {
+      "label": {
+        "en": "Attention mechanisms · working knowledge",
+        "zh": "注意力机制 · 了解"
+      },
+      "items": [
+        "FlashAttention",
+        "PagedAttention",
+        "SageAttention"
+      ]
+    }
+  ],
+  "awards": [
+    {
+      "en": "3rd overall, ICDAR / ECCV 2022 OOV international competition — team lead.",
+      "zh": "ICDAR / ECCV 2022 OOV 国际竞赛总榜第三（负责人）。"
+    },
+    {
+      "en": "Runner-up, iFLYTEK AI Developer Competition (2022) — team lead.",
+      "zh": "2022 科大讯飞 AI 开发者大赛亚军（负责人）。"
+    },
+    {
+      "en": "National Second Prize, Huawei Cup Graduate Mathematical Modeling Competition (2021).",
+      "zh": "2021 华为杯研究生数学建模国家二等奖。"
+    },
+    {
+      "en": "National Second Prize, Teddy Cup Deep Learning Pest Detection Competition (2022).",
+      "zh": "2022 泰迪杯深度学习害虫检测国家二等奖。"
+    },
+    {
+      "en": "University Gold Award, Internet+ Graduate Creative Track (2022).",
+      "zh": "2022 互联网+研究生创意组校赛金奖。"
+    },
+    {
+      "en": "Outstanding Graduate Student and First-Class Graduate Scholarship, Zhejiang Gongshang University (2022).",
+      "zh": "2022 浙江工商大学校级优秀研究生、研究生一等奖学金。"
+    },
+    {
+      "en": "Six university scholarships and one Encouragement Scholarship during undergraduate study.",
+      "zh": "本科期间获得六次校级奖学金及一次励志奖学金。"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
     <id>https://1193700079.github.io/llm-accel-panorama.html</id>
     <published>2026-11-16T14:00:00.000Z</published>
     <updated>2026-11-16T14:00:00.000Z</updated>
-    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。</summary>
+    <summary type="html">&lt;p&gt;本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从"是什么、为什么、怎么做、有什么坑"讲清楚。先建立全景认知，再逐个深入。&lt;/p&gt;</summary>
     <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>

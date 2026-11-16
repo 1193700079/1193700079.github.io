@@ -1,4 +1,5 @@
-<article class="post-row" data-post data-category="{{ post.category | escape }}" data-search="{{ post.title | append: ' ' | append: post.summary | append: ' ' | append: post.tag | append: ' ' | append: post.category | downcase | escape }}">
+{% assign tag_words = post.tags | join: ' ' %}
+<article class="post-row" data-post data-category="{{ post.category | escape }}" data-search="{{ post.title | append: ' ' | append: post.summary | append: ' ' | append: tag_words | append: ' ' | append: post.category | downcase | escape }}">
   <div class="post-meta"><time datetime="{{ post.date }}">{{ post.date | date: '%Y.%m.%d' }}</time><span class="meta-dot" aria-hidden="true">·</span><a href="{{ post.category_url | relative_url }}">{{ post.category | escape }}</a><span class="reading-time">{{ post.minutes }} 分钟阅读</span></div>
   <h2><a href="{{ post.url | relative_url }}">{{ post.title | escape }}<span class="post-arrow" aria-hidden="true">↗</span></a></h2>
   <p class="post-summary">{{ post.summary | escape }}</p>

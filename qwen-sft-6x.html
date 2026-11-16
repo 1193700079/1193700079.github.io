@@ -1,0 +1,84 @@
+---
+layout: "blog-post"
+post_id: "qwen-sft-6x"
+title: "Databricks：如何让 Qwen 3.8 27B 微调快6倍"
+description: "围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。"
+---
+{% raw %}
+<p>GPU 平均利用率已经 98%，训练却还能快 6 倍。Databricks 这篇博文完整记录了排查过程、算子变化与数据打包细节。以下为其全文翻译，文中的“我们”指原作者 Bruce Fontaine 和 Pardis Beikzadeh。</p>
+<span id="more"></span>
+<p>训练或微调一个数十亿参数的基础模型，需要大量算力，往往耗费数百乃至数千 GPU 小时。优化大模型训练性能并不容易，GPU 利用率这样的高层指标也未必能反映 GPU 实际用得有多充分。本文介绍如何穿透这些抽象层，在 AI Runtime 上把最新 Qwen 3.8 27B 模型的微调提速 6 倍——即便原来的 GPU 利用率已达到 98%，仍把固定数据集上的微调耗时从 7 小时 44 分钟压到 1 小时 17 分钟。</p>
+
+<h1 id="she-zhi"><a href="#she-zhi" class="headerlink" title="模型设置"></a>模型设置</h1>
+<p>从一个标准训练循环开始，用 transformers 库和 HuggingFaceH4/ultrachat_200k 监督微调数据集训练 Qwen 3.8 27B：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"># Create the Dataloader</span><br><span class="line">data_loader = make_dataloader(&quot;HuggingFaceH4/ultrachat_200k&quot;)</span><br><span class="line">model = AutoModelForImageTextToText.from_pretrained(</span><br><span class="line">    &quot;Qwen/Qwen3.8-27B&quot;, torch_dtype=torch.bfloat16)</span><br><span class="line"># Enabled gradient checkpointing to reduce memory requirements</span><br><span class="line">model.gradient_checkpointing_enable(</span><br><span class="line">    gradient_checkpointing_kwargs={&quot;use_reentrant&quot;: False})</span><br><span class="line"># Apply FSDP2</span><br><span class="line">mp = MixedPrecisionPolicy(param_dtype=torch.bfloat16, reduce_dtype=torch.float32)</span><br><span class="line">layers = model.model.language_model.layers</span><br><span class="line">for layer in layers:</span><br><span class="line">    fully_shard(layer, mp_policy=mp)</span><br><span class="line">fully_shard(model, mp_policy=mp)</span><br><span class="line">model.cuda()</span><br><span class="line">opt = torch.optim.AdamW(</span><br><span class="line">    model.parameters(), lr=1e-5, betas=(0.9, 0.95), weight_decay=0.0)</span><br><span class="line">model.train()</span><br><span class="line">for batch in data_loader:</span><br><span class="line">    out = model(input_ids=batch[&quot;inputs&quot;], labels=batch[&quot;labels&quot;])</span><br><span class="line">    out.loss.backward()</span><br><span class="line">    opt.step()</span><br><span class="line">    opt.zero_grad(set_to_none=True)</span><br></pre></td></tr></table></figure>
+<p>这里用了 FSDP2，torch 最新的模型分片技术。要让权重与优化器状态装进 GPU，就需要这种分片——在这个规模下，单纯分布式数据并行无法把模型权重塞进单张 GPU。同时开启了激活检查点（activation checkpointing），反向传播时用额外计算换内存，从而增大单卡可承载的 batch size。</p>
+<p>数据加载器把数据组成二维批次，每批最大 8192 token，并把批内样本补齐到最长样本的长度。</p>
+
+<h1 id="ji-chu-ben-zhong"><a href="#ji-chu-ben-zhong" class="headerlink" title="初始训练基准"></a>初始训练基准</h1>
+<p>基线模型在完整数据集上训练需 7 小时 44 分钟，训练期间 GPU 平均利用率显示为 98%，吞吐 9,396 token/s。</p>
+<p>这个利用率看起来很高，但具误导性。标准 GPU 利用率只统计 GPU 处于工作状态的时间占比，无法告诉我们：GPU 活跃时，模型究竟把它用得有多充分。要弄清楚这一点，得继续往下看。</p>
+<p>一种办法是用 torch 的追踪机制。下面这样调整训练循环，并限制步数以尽快拿到结果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">with torch.profiler.profile(</span><br><span class="line">    activities=[</span><br><span class="line">        torch.profiler.ProfilerActivity.CPU,</span><br><span class="line">        torch.profiler.ProfilerActivity.CUDA,  # Remove if running only on CPU</span><br><span class="line">    ],</span><br><span class="line">    schedule=torch.profiler.schedule(</span><br><span class="line">        wait=1,     # Step 1: Skip tracing to let things warm up</span><br><span class="line">        warmup=0,   # Skip warmup for this specific single-step trace</span><br><span class="line">        active=1,   # Step 2: Trace exactly 1 step</span><br><span class="line">        repeat=1</span><br><span class="line">    ),</span><br><span class="line">) as prof:</span><br><span class="line">    &lt;training code here&gt;</span><br><span class="line">print(prof.key_averages().table(sort_by=&quot;self_cuda_time_total&quot;, row_limit=10))</span><br></pre></td></tr></table></figure>
+<p>以某一个训练步为例，可以得到下面这些数据。</p>
+<p>表 1：CPU，总耗时 14.4 秒，共 1,714,382 次调用。按总耗时排序的主要操作。</p>
+<table><thead><tr><th>操作</th><th>调用次数</th><th>平均耗时（微秒）</th><th>总耗时（毫秒）</th></tr></thead><tbody><tr><td>aten::bmm</td><td>31,105</td><td>50.5</td><td>1,571.80</td></tr><tr><td>aten::mul</td><td>46,878</td><td>16.2</td><td>758.9</td></tr><tr><td>MmBackward0</td><td>497</td><td>1,111.4</td><td>552.4</td></tr><tr><td>aten::copy_</td><td>69,444</td><td>7.2</td><td>500.6</td></tr><tr><td>aten::add</td><td>45,623</td><td>8.0</td><td>366.7</td></tr><tr><td>aten::select</td><td>68,645</td><td>3.4</td><td>230.5</td></tr><tr><td>aten::exp</td><td>9,504</td><td>21.7</td><td>206.5</td></tr><tr><td>aten::sum</td><td>16,194</td><td>12.2</td><td>196.8</td></tr><tr><td>aten::empty</td><td>40,709</td><td>4.7</td><td>190.5</td></tr><tr><td>aten::as_strided</td><td>218,214</td><td>0.8</td><td>173.3</td></tr></tbody></table>
+<p>表 2：GPU，总耗时 10.3 秒，共 269,448 个操作。按总耗时排序的主要操作。</p>
+<table><thead><tr><th>操作</th><th>调用次数</th><th>平均耗时（微秒）</th><th>总耗时（毫秒）</th></tr></thead><tbody><tr><td>nvjet GEMM</td><td>1923</td><td>1,163.1</td><td>2,236.8</td></tr><tr><td>逐元素浮点加法</td><td>42,657</td><td>51.1</td><td>2,180.5</td></tr><tr><td>逐元素浮点乘法</td><td>35,012</td><td>24</td><td>841.8</td></tr><tr><td>逐元素浮点填充</td><td>33,557</td><td>21.5</td><td>723.1</td></tr><tr><td>逐元素浮点复制</td><td>59,282</td><td>11.8</td><td>700.7</td></tr><tr><td>Memcpy DtoD</td><td>5,585</td><td>90.5</td><td>505.2</td></tr><tr><td>sm80_xmma GEMM</td><td>31,105</td><td>20.9</td><td>651.3</td></tr></tbody></table>
+
+<h1 id="ke-gai-jin"><a href="#ke-gai-jin" class="headerlink" title="可以改进的地方"></a>可以改进的地方</h1>
+<p>从这些表格里，可以发现当前模型存在几个整体性问题：</p>
+<p><strong>CPU 为每个训练步做准备的时间，比 GPU 执行它还长。</strong>这不太正常——GPU 执行时 CPU 侧操作通常是异步的，CPU 应当远远跑在 GPU 前面。主要影响是 GPU 会停下来等待，因此还有改进空间。</p>
+<p><strong>操作太多了！</strong>表格里有数十万个小操作。问题在于 CPU 无法以足够快的速度把 GPU 操作加入队列，让 GPU 持续忙碌。关键思路是减少 CPU 向 GPU 提交的操作数量。有几种通用方法，其中一种适合我们这次的情况：</p>
+<ul>
+<li>torch 的 CUDA graphs 可以记录执行过的 CUDA 内核，再用一次 CPU 调用重放它们。很强大，但限制不少，且与 FSDP2 的动态行为冲突，暂不采用。</li>
+<li>torch.compile 会追踪代码，并在可能的地方用 Triton 自动融合内核。本例将使用手动融合内核；对这些大模型操作，手动融合后就没有给 torch.compile 留下进一步优化的空间。</li>
+<li>手动融合内核针对特定操作使用专门的融合技术，是 torch 编译器无法自行应用的。好在社区已有不少成熟的预构建内核，例如 Flash Attention，它在本例中带来一点性能提升。</li>
+</ul>
+<p>此外，批次中还有 padding 过多的问题：输入张量必须是矩形，每行都要补齐到该批次的最大 token 数。下文介绍一种适用于大模型的技巧，尽量减少这部分浪费。</p>
+
+<h1 id="rong-he-suan-zi"><a href="#rong-he-suan-zi" class="headerlink" title="融合内核"></a>融合内核</h1>
+<p>你可能注意到了，有些内核出现次数特别多。以 Qwen 为例，批量矩阵乘法内核在一个训练步中就运行了超过 30,000 次。</p>
+<p>融合内核会把多个较小的 GPU 内核合成一个执行单元，避免 GPU 高带宽显存与片上存储之间代价高昂的数据搬运，同时让 GPU 核心的调度更高效。面对这么多额外内核，即使 torch.compile 能起作用，运行它也要花很长时间。因此先用手动融合内核减少操作总数，是一个不错的起点。Flash Attention 这类成熟的融合方案，也不是 torch.compile 自己能够发现的。</p>
+<p>对于标准注意力层，transformers 默认用 torch 的缩放点积注意力（SDPA）。但那些小操作其实来自非标准的门控 Delta 网络层。幸运的是，针对这些层已有 causal-conv1d 和 flash-linear-attention 两种内核，可以融合每一层里的许多操作。我们怎么发现它们的？transformers 里 Qwen 的实现已经写明了支持哪些内核：</p>
+<ul><li>flash-linear-attention</li><li>causal-conv1d</li></ul>
+<p>获取这些内核主要有两种方式：</p>
+<ul>
+<li>自行安装：直接 pip 从 PyPI 安装（例如 flash-linear-attention），或 git clone 克隆仓库后编译；编译耗时过长时也可寻找提供预编译包的来源。</li>
+<li>使用 Hugging Face 的 Kernel Hub 获取预编译内核。</li>
+</ul>
+<p>我们通常推荐第一种方式，尤其是结合 Docker 容器支持：在构建容器时就装好所有内核，以减少训练任务的启动时间。Kernel Hub 虽然方便，但内核往往明确依赖所安装的 torch 和 CUDA 版本，未必有适配当前配置的可用内核。这时 transformers 模型会<strong>静默回退</strong>到未经优化、性能较低的内核。</p>
+<p>安装 flash-linear-attention 和 causal-conv1d 两个包后，端到端训练提速 3.7 倍，耗时降至 2 小时 5 分钟。表中高亮的新内核替代了前面表格里的逐元素函数，执行的操作总数也大幅下降，减至约原来的十五分之一：</p>
+<p>表 3：CPU，总耗时 3.9 秒，共 118,316 次调用。</p>
+<table><thead><tr><th>操作</th><th>调用次数</th><th>平均耗时（微秒）</th><th>总耗时（毫秒）</th></tr></thead><tbody><tr><td>cudaMemsetAsync</td><td>1,854</td><td>283.9</td><td>526.3</td></tr><tr><td>ChunkGatedDeltaRuleFunction</td><td>9687</td><td>1.7</td><td>83.7</td></tr><tr><td>aten::mm</td><td>1,987</td><td>39.6</td><td>78.6</td></tr><tr><td>MmBackward0</td><td>497</td><td>134.2</td><td>66.7</td></tr><tr><td>ChunkGatedDeltaRuleFunctionBackward</td><td>48</td><td>1,159.9</td><td>55.7</td></tr><tr><td>DaoAILab::_causal_conv1d_fwd_cpp</td><td>96</td><td>55.8</td><td>5.4</td></tr><tr><td>CausalConv1dFn</td><td>96</td><td>51.4</td><td>4.9</td></tr></tbody></table>
+<p>表 4：GPU，总耗时 3.9 秒，共 18,060 次调用。</p>
+<table><thead><tr><th>操作</th><th>调用次数</th><th>平均耗时（微秒）</th><th>总耗时（毫秒）</th></tr></thead><tbody><tr><td>nvjet GEMM</td><td>1,923</td><td>1,183.3</td><td>2,275.5</td></tr><tr><td>逐元素浮点乘法</td><td>2184</td><td>128.1</td><td>279.9</td></tr><tr><td>逐元素复制与类型转换</td><td>1255</td><td>101.1</td><td>126.9</td></tr><tr><td>chunk_cat flash-linear-attention</td><td>65</td><td>1,402.0</td><td>91.2</td></tr><tr><td>flash_attention_3 forwards</td><td>16</td><td>2,693.8</td><td>43.1</td></tr><tr><td>chunk_gated_delta_rule_fwd</td><td>144</td><td>255.6</td><td>36.8</td></tr><tr><td>flash_attention_3 backwards</td><td>32</td><td>965.6</td><td>30.9</td></tr></tbody></table>
+<p>注意：训练时前向和反向传播都需要对应内核。有些内核只支持前向计算，因为其实现仅用于加速推理。</p>
+<p><strong>要点</strong>：可以考虑使用常见模型已有的成熟、高度优化的内核。借助现成内核通常只需较少工作就能获得显著提升——此次训练提速 3.7 倍，耗时从 7h44m 降至 2h05m。</p>
+
+<h1 id="pi-liu"><a href="#pi-liu" class="headerlink" title="批处理、分词与填充"></a>批处理、分词与填充</h1>
+<p>现在 Qwen 已经相当快了，但还能再快一些。默认批处理方式采用二维矩形张量，长度为 8192 token（不发生 OOM 时的最大长度）。缺点是 padding 往往会浪费张量中相当多的空间。</p>
+<p>如果 Qwen 只用标准注意力机制，torch 现在已提供较完善的 NestedTensor 支持，可完全移除 padding。但 flash-linear-attention 只支持更传统的一维打包张量方式：左侧是补齐后的二维批次，右侧是一维打包张量及边界偏移量。</p>
+<p>不过不能随意这样做。预训练时直接把一维张量交给模型或许可以接受；但微调时，必须确保每个样本中的 token 只关注同一个样本内的 token。为此，需要将正确的样本 position_ids 传给模型，模型再把信息传给融合注意力内核，由内核应用正确的注意力掩码。</p>
+<p>经过这个看起来很简单的改动，训练耗时从 2h05m 进一步缩短到 1h17m。原因有两个：</p>
+<ul>
+<li>主要原因：打包方式增加了每个批次中的序列数量，使总批次数减少了约 36%。这个比例取决于数据集中样本的长度及其分布。</li>
+<li>次要原因：Flash Linear Attention 内核需要针对每一种输入形状即时编译。此前输入形状动态变化，额外增加了几分钟编译时间。</li>
+</ul>
+<p>取舍在于：这种改动会让输入流水线更复杂，且容易引入影响模型质量的错误。但在本例中，节省 36% 的批次值得这样做。还有其他减少 padding 的办法，例如保留原批处理方式、先按长度对所有输入排序以尽量减少填充——但这种排序可能让相邻样本出现意料之外的相关性，进而使模型产生偏差。</p>
+<p><strong>要点</strong>：当训练数据集中的输入短于模型可训练的最大 token 长度（本例 8192）时，高效地把数据打包成批次能节省大量时间。在这个数据集上获得 1.6 倍训练提速，耗时从 2h05m 降至 1h17m。</p>
+
+<h1 id="jie-lun"><a href="#jie-lun" class="headerlink" title="结论"></a>结论</h1>
+<p>本文介绍了如何将训练效率提升至 6 倍，归结为三点：（1）先测量真正重要的东西——不只看 GPU 利用率，还要看训练时间究竟花在哪里；（2）借助 Flash Linear Attention 等成熟库优化并融合内核；（3）针对模型调整数据批次的输入方式。</p>
+<p>要规模化地做到这些，需要一个能把高性能路径变成默认选择的平台。AI Runtime（AIR）已内置许多改进：基础环境打包了最新的 CUDA 和 Flash Attention；自动跟踪 GPU 利用率、温度及健康状况等核心指标；确保 torch 和性能分析工具保持更新。其内部 Agent——Genie Code 也专门调优过，会寻找这类机会进一步优化训练。此外 UCVolumeDataset 还优化了从 Databricks 读取数据的过程。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>原文：<a href="https://www.databricks.com/blog/reducing-qwen-training-time-6x-ai-runtime">Databricks 博客</a></li>
+<li>AI Runtime 示例代码：<a href="https://github.com/databricks-solutions/ai-runtime-cookbook">ai-runtime-cookbook / sft-qwen3.8-27b-fsdp2-multinode</a></li>
+<li>UltraChat 200k 数据集：<a href="https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k">huggingface</a></li>
+<li>FSDP2 文档：<a href="https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html">pytorch</a></li>
+<li>Flash Linear Attention：<a href="https://github.com/fla-org/flash-linear-attention">fla-org/flash-linear-attention</a></li>
+<li>causal-conv1d：<a href="https://github.com/Dao-AILab/causal-conv1d">Dao-AILab/causal-conv1d</a></li>
+</ul>
+{% endraw %}

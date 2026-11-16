@@ -1,0 +1,37 @@
+---
+layout: "blog-post"
+post_id: "leapquant"
+title: "LeapQuant：近乎无损的 8-bit 线性注意力递归态量化"
+description: "阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。"
+---
+{% raw %}
+<p>线性注意力把上下文压成一个固定大小的递归状态，但每个解码步都要读/更新这个状态，成了推理瓶颈。量化本应直接降成本，可舍入误差会在解码步里不断累积、外加状态里的离群行列，直接把质量打崩。LeapQuant 用三个免训练（training-free）技巧把 8-bit 递归态做到近乎无损，内核级提速 2.05–3.70×、端到端 1.57×。这是 UC Berkeley / NVIDIA 团队的开源工作（2026/11）。</p>
+<span id="more"></span>
+
+<h1 id="bei-jing"><a href="#bei-jing" class="headerlink" title="背景"></a>背景</h1>
+<p>近期 LLM 用线性注意力替换了大量标准注意力层，比如 Qwen 的门控 Delta 网络（GDN）和 Kimi 的 Delta Attention（KDA）。线性注意力把上下文压成一个固定大小的递归状态（recurrent state）。但解码时，每一步都要读并更新这个状态，仍是主要瓶颈。</p>
+<p>量化是降低这项成本的天然手段，但它会显著劣化模型质量：舍入误差跨解码步累积，状态里的离群行和列又让每次量化都不准。LeapQuant 用三个免训练技巧同时解决这两个问题。</p>
+
+<h1 id="fang-fa"><a href="#fang-fa" class="headerlink" title="方法"></a>方法</h1>
+<p><strong>① 按窗口量化（Per-window quantization）</strong>——限制误差累积。LeapQuant 跳过一窗 token，只在窗口末尾量化一次状态。窗口内低比特状态保持不变，token 更新以高精度缓冲，每个输出由「固定状态 + 缓冲更新」算出。这样舍入误差被关在一个窗口里，不会无界累积。</p>
+<p><strong>② 补偿 Token（Compensator Tokens）</strong>——降低每次量化的误差。把状态里最大的若干离群项以高精度保留为几个「补偿 Token」，每个都是一个秩一外积，和真实 token 的更新形式相同，因此直接复用窗口内的更新路径，几乎不增加额外开销。</p>
+<p><strong>③ 残差平滑（Residual smoothing）</strong>——均衡量级。移除补偿 Token 后，残差在 key 通道上量级仍可能不均。LeapQuant 在量化前对每个 key 行做缩放，把这些量级拉平；平滑尺度在每个窗口边界重算。</p>
+
+<h1 id="jie-guo"><a href="#jie-guo" class="headerlink" title="结果"></a>结果</h1>
+<p>精度与 FP32 基线相当，内核实测提速 2.05–3.70×，端到端（vLLM）1.57×，测试于 NVIDIA B200、RTX PRO 6000、RTX 5090。下表是各方法在 AIME 2026 / BeyondAIME / GPQA-Diamond / LiveCodeBench v6 四个基准上的平均精度（%），LeapQuant 在 8-bit、6-bit、4-bit 下都近乎无损，而其它低比特方法误差累积后直接崩溃。</p>
+<table><thead><tr><th>方法</th><th>精度（Avg.，%）</th><th>说明</th></tr></thead><tbody><tr><td>FP32</td><td>84.0</td><td>全精度基线</td></tr><tr><td>LeapQuant (8-bit)</td><td>84.4</td><td>近乎无损，反超全精度</td></tr><tr><td>KVQuant</td><td>75.2</td><td>8-bit</td></tr><tr><td>INT8</td><td>47.7</td><td>8-bit</td></tr><tr><td>FP8</td><td>45.1</td><td>8-bit，误差随步累积崩溃</td></tr><tr><td>TurboQuant (6-bit)</td><td>60.1</td><td>6-bit</td></tr><tr><td>LeapQuant (6-bit)</td><td>84.4</td><td>近乎无损</td></tr><tr><td>LeapQuant (4-bit)</td><td>80.6</td><td>4-bit 仍显著领先</td></tr></tbody></table>
+<p>值得注意的是 BF16（72.5）反而低于 8-bit 的 LeapQuant（84.4）——线性注意力的递归态对量化很敏感，朴素降精度会放大误差累积，这正是 LeapQuant 要解决的。</p>
+
+<h1 id="shi-yong"><a href="#shi-yong" class="headerlink" title="使用"></a>使用</h1>
+<p>LeapQuant 已作为插件集成进 vLLM 0.30.0，支持 Qwen（GDN）和 GLM（KDA）模型。安装并起一个 8-bit 递归态的 OpenAI 兼容 vLLM 服务：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/leapquant/LeapQuant.git</span><br><span class="line">cd LeapQuant &amp;&amp; pip install -e .</span><br><span class="line">bash serve.sh &lt;model&gt;</span><br></pre></td></tr></table></figure>
+<p><code>serve.sh</code> 起一个带 8-bit 递归态的 OpenAI 兼容 vLLM 服务，额外参数透传给 <code>vllm serve</code>。项目基于 vLLM、TileLang 和 Flash Linear Attention 构建，依赖 <code>vllm==0.30.0</code> 与 <code>tilelang==0.1.12</code>，需要 Python ≥ 3.12。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>代码：<a href="https://github.com/leapquant/LeapQuant">github.com/leapquant/LeapQuant</a></li>
+<li>论文：arXiv:2609.38166</li>
+<li>项目页：<a href="https://leapquant.github.io">leapquant.github.io</a></li>
+</ul>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">@article{pan2026leapquant,</span><br><span class="line">  title   = {LeapQuant: Efficient Linear Attention with Accurate Recurrent State Quantization},</span><br><span class="line">  author  = {Pan, Yi and Xi, Haocheng and Zhu, Kan and ... and Han, Song and Keutzer, Kurt</span><br><span class="line">             and Iyer, Rishabh and Stoica, Ion},</span><br><span class="line">  journal = {arXiv preprint arXiv:2609.38166},</span><br><span class="line">  year    = {2026}</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+{% endraw %}

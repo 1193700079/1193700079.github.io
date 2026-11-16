@@ -28,6 +28,8 @@ class Page(HTMLParser):
         self.links = []
         self.ids = []
         self.h1_count = 0
+        self.post_links = []
+        self._elements = []
         self.feed(self.html)
 
     def handle_starttag(self, tag, attrs):
@@ -44,6 +46,19 @@ class Page(HTMLParser):
             self.links.append(attrs["poster"])
         if tag == "object" and attrs.get("data"):
             self.links.append(attrs["data"])
+        if tag == "a" and attrs.get("href"):
+            in_row = any("post-row" in classes for _, classes in self._elements)
+            in_heading = any(name == "h2" for name, _ in self._elements)
+            if in_row and in_heading:
+                self.post_links.append(attrs["href"])
+        if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+            self._elements.append((tag, attrs.get("class", "").split()))
+
+    def handle_endtag(self, tag):
+        for index in range(len(self._elements) - 1, -1, -1):
+            if self._elements[index][0] == tag:
+                del self._elements[index:]
+                break
 
 
 def local_target(output, current, link):
@@ -105,8 +120,17 @@ def main():
     assert blog_path.is_file(), "Missing blog inventory: _data/blog.json"
     blog = json.loads(blog_path.read_text(encoding="utf-8"))
     posts = blog["posts"]
-    assert len(posts) == 5, "Expected five preserved blog posts"
-    assert {unquote(urlsplit(post["url"]).path) for post in posts} == POST_PATHS, "Original article URLs changed"
+    post_paths = [unquote(urlsplit(post["url"]).path) for post in posts]
+    assert len(post_paths) == len(set(post_paths)), "Duplicate article URLs"
+    assert POST_PATHS <= set(post_paths), "Original article URLs missing"
+    for post, path in zip(posts, post_paths):
+        assert post["month"] == post["date"][:7] and post["year"] == post["month"][:4], f"Article archive date mismatch: {post['url']}"
+        if path in POST_PATHS:
+            assert post["month"] == "2021-12", f"Legacy article archive changed: {post['url']}"
+        tags = post["tags"]
+        assert isinstance(tags, list) and tags and all(isinstance(tag, str) for tag in tags), f"Invalid article tags: {post['url']}"
+        assert len(tags) == len(set(tags)), f"Duplicate article tags: {post['url']}"
+        assert post["tag"] == tags[0], f"Primary article tag mismatch: {post['url']}"
 
     pages = {}
 
@@ -123,14 +147,44 @@ def main():
         assert path.is_file(), f"Missing blog route: {url}"
         return path
 
-    for collection, field in [("categories", "category_url"), ("tags", "tag_url")]:
+    post_files = {post["url"]: required_route(post["url"]) for post in posts}
+    assert len(set(post_files.values())) == len(posts), "Duplicate article destinations"
+
+    def check_listing(url, members):
+        path = required_route(url)
+        actual = []
+        for link in page_at(path).post_links:
+            resolved = local_target(output, path, link)
+            assert resolved is not None, f"External article link in {url}: {link}"
+            actual.append(resolved[0])
+        assert len(actual) == len(set(actual)), f"Duplicate article rows in {url}"
+        expected = {post_files[post["url"]] for post in members}
+        missing = sorted(str(path.relative_to(output)) for path in expected - set(actual))
+        extra = sorted(str(path.relative_to(output)) for path in set(actual) - expected)
+        assert set(actual) == expected, f"Wrong article list in {url}: missing={missing}, extra={extra}"
+
+    for collection, field in [("categories", "category"), ("tags", "tag")]:
         entries = blog[collection]
-        urls = [entry["url"] for entry in entries]
-        assert len(urls) == len(set(urls)), f"Duplicate {collection} routes"
-        assert set(urls) == {post[field] for post in posts}, f"Incomplete {collection} inventory"
+        names = [entry["name"] for entry in entries]
+        routes = [required_route(entry["url"]) for entry in entries]
+        assert len(names) == len(set(names)), f"Duplicate {collection} names"
+        assert len(routes) == len(set(routes)), f"Duplicate {collection} routes"
+        expected_names = {post["category"] for post in posts} if collection == "categories" else {tag for post in posts for tag in post["tags"]}
+        assert set(names) == expected_names, f"Incomplete {collection} inventory"
+        by_name = dict(zip(names, routes))
+        for post in posts:
+            assert required_route(post[f"{field}_url"]) == by_name[post[field]], f"Wrong {field} URL for {post['url']}"
         for entry in entries:
-            required_route(entry["url"])
-            assert entry["count"] == sum(post[field] == entry["url"] for post in posts), f"Wrong count for {entry['url']}"
+            members = [post for post in posts if post["category"] == entry["name"]] if collection == "categories" else [post for post in posts if entry["name"] in post["tags"]]
+            assert entry["count"] == len(members), f"Wrong count for {entry['url']}"
+            check_listing(entry["url"], members)
+
+    check_listing("/blog/", posts)
+    check_listing("/archives/", posts)
+    for year in sorted({post["year"] for post in posts}):
+        check_listing(f"/archives/{year}/", [post for post in posts if post["year"] == year])
+    for month in sorted({post["month"] for post in posts}):
+        check_listing(f"/archives/{month.replace('-', '/')}/", [post for post in posts if post["month"] == month])
 
     for post in posts:
         path = required_route(post["url"])
@@ -185,7 +239,7 @@ def main():
     cv = page_at(output / "cv/index.html").html
     for text in ["MiniMax H3", "Qwen-Image 2.1", "Qwen3.8-27B", "Qoder", "Qwen3.6-35B-A3B", "智慧绿通", "2025.02", "2024.12", "2024.03", "2023.08"]:
         assert text in cv, f"Required resume fact missing: {text}"
-    print(f"PASS: home/CV facts, 5 article hashes, taxonomy routes, {len(pages)} pages with valid local links, and removed pages absent.")
+    print(f"PASS: home/CV facts, {len(posts)} article hashes, taxonomy/archive listings, {len(pages)} pages with valid local links, and removed pages absent.")
 
 
 if __name__ == "__main__":

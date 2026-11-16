@@ -12,9 +12,9 @@ layout: blog
   <article class="article-main" aria-label="文章正文">
     <div class="article-entry" id="article-content"><!-- article-body:start -->{{ content }}<!-- article-body:end --></div>
     <footer class="article-end">
-      <a class="post-tag" href="{{ post.tag_url | relative_url }}"># {{ post.tag | escape }}</a>
+      <div class="post-tags">{% for name in post.tags %}{% assign tag = site.data.blog.tags | where: 'name', name | first %}<a class="post-tag" href="{{ tag.url | relative_url }}"># {{ name | escape }}</a>{% endfor %}</div>
       <button class="copy-link" type="button" data-copy-link>复制文章链接 <span aria-hidden="true">↗</span></button>
-      <p>本文由杨瑞卿撰写，转载请注明作者与出处。</p>
+      <p>笔记与整理：杨瑞卿。引用内容及图表以文中标注的原始来源为准。</p>
     </footer>
     <nav class="post-pagination" aria-label="相邻文章">
       {% for entry in site.data.blog.posts %}{% if entry.id == post.id %}

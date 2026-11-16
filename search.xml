@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界</title>
+    <url>/rl-diffusion-survey.html</url>
+    <content><![CDATA[RL 驱动的扩散模型系统综述：技术全景、四大领域、三大瓶颈。TPAMI 接收。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>LeapQuant：近乎无损的 8-bit 线性注意力递归态量化</title>
     <url>/leapquant.html</url>
     <content><![CDATA[三个免训练技巧把线性注意力递归态量化到近乎无损的 8-bit。<span id="more"></span>]]></content>

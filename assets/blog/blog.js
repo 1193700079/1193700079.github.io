@@ -8,9 +8,9 @@
     navigation.classList.toggle('is-open', open);
   };
   menu?.addEventListener('click', () => setMenu(menu.getAttribute('aria-expanded') !== 'true'));
-  navigation?.addEventListener('click', (event) => { if (event.target.closest('a')) setMenu(false); });
+  navigation?.addEventListener('click', (event) => { if (event.target.closest?.('a')) setMenu(false); });
   document.addEventListener('click', (event) => {
-    if (!event.target.closest('.site-header')) setMenu(false);
+    if (!event.target.closest?.('.site-header')) setMenu(false);
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && menu?.getAttribute('aria-expanded') === 'true') {
@@ -71,7 +71,7 @@
       search.focus();
     });
     document.addEventListener('keydown', (event) => {
-      const editable = event.target.closest('input,textarea,select,[contenteditable="true"]');
+      const editable = event.target.closest?.('input,textarea,select,[contenteditable="true"]');
       if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !editable) {
         event.preventDefault();
         search.focus();
@@ -153,7 +153,7 @@
     window.addEventListener('scroll', () => {
       if (!scheduled) { scheduled = true; requestAnimationFrame(updateCurrent); }
     }, { passive: true });
-    toc.addEventListener('click', (event) => { if (mobile.matches && event.target.closest('a')) toc.open = false; });
+    toc.addEventListener('click', (event) => { if (mobile.matches && event.target.closest?.('a')) toc.open = false; });
     updateCurrent();
   }
 })();

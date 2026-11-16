@@ -1,289 +1,349 @@
 {
- "posts": [
-  {
-   "id": "multi-harness-rl",
-   "url": "/multi-harness-rl.html",
-   "title": "Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型",
-   "date": "2026-11-16T12:00:00.000Z",
-   "year": "2026",
-   "month": "2026-11",
-   "category": "技术阅读",
-   "category_url": "/categories/技术阅读/",
-   "tag": "llm",
-   "tag_url": "/tags/llm/",
-   "tags": [
-    "llm"
-   ],
-   "summary": "同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。",
-   "minutes": 15,
-   "toc": [
+  "posts": [
     {
-     "id": "wei-shen-me-harness-ying-xiang-da-da",
-     "title": "为什么 harness 影响这么大",
-     "level": 1
+      "id": "sglang-pro6000-load-test",
+      "url": "/sglang-pro6000-load-test.html",
+      "title": "8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你",
+      "date": "2026-11-16T13:00:00.000Z",
+      "year": 2026,
+      "month": 11,
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。",
+      "minutes": 12,
+      "toc": [
+        {
+          "id": "ji-qi-yu-yun-xing-xian-zhuang",
+          "title": "机器与运行现状",
+          "level": 1
+        },
+        {
+          "id": "li-yong-lü-shi-ge-lie-huan",
+          "title": "利用率是个谎言",
+          "level": 1
+        },
+        {
+          "id": "shi-fen-zhong-jian-kong-chuang-kou",
+          "title": "十分钟监控窗口的坑",
+          "level": 1
+        },
+        {
+          "id": "ttft-tpot-de-kou-jing",
+          "title": "TTFT / TPOT 的口径",
+          "level": 1
+        },
+        {
+          "id": "san-shi-er-yan-fa-cheng-duo-shao-yong-hu",
+          "title": "三十二并发能撑多少用户",
+          "level": 1
+        },
+        {
+          "id": "dong-tai-kuo-suo-rong-de-jie-dian",
+          "title": "动态扩缩容的节点",
+          "level": 1
+        },
+        {
+          "id": "hikache-de-jie-lu",
+          "title": "HiCache 的解路",
+          "level": 1
+        },
+        {
+          "id": "jie-lun-yu-xia-yi-bu",
+          "title": "结论与下一步",
+          "level": 1
+        }
+      ],
+      "body_sha256": "e45ddc5896215e2db800caf5777dfb2bc7ba0c4507bf97e3427a6b29ed8726a1"
     },
     {
-     "id": "bai-hei-xiang-shui-zhu-ai",
-     "title": "白盒与黑盒：谁拥有 rollout",
-     "level": 1
+      "id": "multi-harness-rl",
+      "url": "/multi-harness-rl.html",
+      "title": "Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型",
+      "date": "2026-11-16T12:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。",
+      "minutes": 15,
+      "toc": [
+        {
+          "id": "wei-shen-me-harness-ying-xiang-da-da",
+          "title": "为什么 harness 影响这么大",
+          "level": 1
+        },
+        {
+          "id": "bai-hei-xiang-shui-zhu-ai",
+          "title": "白盒与黑盒：谁拥有 rollout",
+          "level": 1
+        },
+        {
+          "id": "san-kua-jia-gou",
+          "title": "三块架构：OpenEnv、Harbor 与 TRL",
+          "level": 1
+        },
+        {
+          "id": "xun-lian-yu-jie-guo",
+          "title": "训练配方与结果",
+          "level": 1
+        },
+        {
+          "id": "dui-xcoder-de-yi-yi",
+          "title": "对 xcoder 的启示",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "ebc414a8b705f01be9585838cf5e854105cb243ce974c45e3ab2767bdf59e290"
     },
     {
-     "id": "san-kua-jia-gou",
-     "title": "三块架构：OpenEnv、Harbor 与 TRL",
-     "level": 1
+      "id": "mig-dynamic-tp",
+      "url": "/mig-dynamic-tp.html",
+      "title": "MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路",
+      "date": "2026-11-16T11:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。",
+      "minutes": 15,
+      "toc": [
+        {
+          "id": "wei-shen-me",
+          "title": "为什么 tp-size 不能运行时改",
+          "level": 1
+        },
+        {
+          "id": "mig-shi-shen-me",
+          "title": "MIG 是什么",
+          "level": 1
+        },
+        {
+          "id": "wei-shen-me-bu-zhi-chi",
+          "title": "为什么 RTX PRO 6000 不支持",
+          "level": 1
+        },
+        {
+          "id": "dui-bi",
+          "title": "两条路对比",
+          "level": 1
+        },
+        {
+          "id": "shen-yi-yi",
+          "title": "落到 RTX PRO 6000 上怎么搞弹性",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "9a5ac914ed048691d040710eed4bb9f363ac008664cfe65e1906b3f7384ed540"
     },
     {
-     "id": "xun-lian-yu-jie-guo",
-     "title": "训练配方与结果",
-     "level": 1
+      "id": "rl-diffusion-survey",
+      "url": "/rl-diffusion-survey.html",
+      "title": "Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界",
+      "date": "2026-11-16T10:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm",
+        "diffusion"
+      ],
+      "summary": "梳理强化学习与扩散模型的结合：从语言、图像和视频，到机器人与科学建模。",
+      "minutes": 5,
+      "toc": [
+        {
+          "id": "bei-jing",
+          "title": "背景：从扩散到强化学习",
+          "level": 1
+        },
+        {
+          "id": "san-da-zhong-shu",
+          "title": "三大瓶颈",
+          "level": 1
+        },
+        {
+          "id": "si-da-ling-yu",
+          "title": "四大领域：RL 如何改造扩散",
+          "level": 1
+        },
+        {
+          "id": "san-san-a",
+          "title": "语言：扩散 LLM",
+          "level": 2
+        },
+        {
+          "id": "san-san-b",
+          "title": "多模态：从文本到图像、视频",
+          "level": 2
+        },
+        {
+          "id": "san-san-c",
+          "title": "机器人：扩散策略与 VLA",
+          "level": 2
+        },
+        {
+          "id": "san-san-d",
+          "title": "科学模型：从分子到物理场",
+          "level": 2
+        },
+        {
+          "id": "jie-lun",
+          "title": "结论与路线图",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "98fd64a69611161461ad56aca71408ed73346d611a17549a5be5ee6bbaa1fa28"
     },
     {
-     "id": "dui-xcoder-de-yi-yi",
-     "title": "对 xcoder 的启示",
-     "level": 1
+      "id": "leapquant",
+      "url": "/leapquant.html",
+      "title": "LeapQuant：近乎无损的 8-bit 线性注意力递归态量化",
+      "date": "2026-11-16T09:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。",
+      "minutes": 6,
+      "toc": [
+        {
+          "id": "bei-jing",
+          "title": "背景",
+          "level": 1
+        },
+        {
+          "id": "fang-fa",
+          "title": "方法",
+          "level": 1
+        },
+        {
+          "id": "jie-guo",
+          "title": "结果",
+          "level": 1
+        },
+        {
+          "id": "shi-yong",
+          "title": "使用",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "34c0fce0ccff6a14d98f1ab8fc89aa5faabe2f12cb24e55946f3714a9e1f054d"
     },
     {
-     "id": "can-kao-lian-jie",
-     "title": "参考链接",
-     "level": 1
+      "id": "qwen-sft-6x",
+      "url": "/qwen-sft-6x.html",
+      "title": "Databricks：如何让 Qwen 3.8 27B 微调快6倍",
+      "date": "2026-11-16T08:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。",
+      "minutes": 17,
+      "toc": [
+        {
+          "id": "she-zhi",
+          "title": "模型设置",
+          "level": 1
+        },
+        {
+          "id": "ji-chu-ben-zhong",
+          "title": "初始训练基准",
+          "level": 1
+        },
+        {
+          "id": "ke-gai-jin",
+          "title": "可以改进的地方",
+          "level": 1
+        },
+        {
+          "id": "rong-he-suan-zi",
+          "title": "融合内核",
+          "level": 1
+        },
+        {
+          "id": "pi-liu",
+          "title": "批处理、分词与填充",
+          "level": 1
+        },
+        {
+          "id": "jie-lun",
+          "title": "结论",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "891a3a39a439704a5c1b04611e27f880883c2659f4c9cefe285fa9ba93b97fbb"
     }
-   ],
-   "body_sha256": "ebc414a8b705f01be9585838cf5e854105cb243ce974c45e3ab2767bdf59e290"
-  },
-  {
-   "id": "mig-dynamic-tp",
-   "url": "/mig-dynamic-tp.html",
-   "title": "MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路",
-   "date": "2026-11-16T11:00:00.000Z",
-   "year": "2026",
-   "month": "2026-11",
-   "category": "技术阅读",
-   "category_url": "/categories/技术阅读/",
-   "tag": "llm",
-   "tag_url": "/tags/llm/",
-   "tags": [
-    "llm"
-   ],
-   "summary": "阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。",
-   "minutes": 15,
-   "toc": [
+  ],
+  "categories": [
     {
-     "id": "wei-shen-me",
-     "title": "为什么 tp-size 不能运行时改",
-     "level": 1
-    },
-    {
-     "id": "mig-shi-shen-me",
-     "title": "MIG 是什么",
-     "level": 1
-    },
-    {
-     "id": "wei-shen-me-bu-zhi-chi",
-     "title": "为什么 RTX PRO 6000 不支持",
-     "level": 1
-    },
-    {
-     "id": "dui-bi",
-     "title": "两条路对比",
-     "level": 1
-    },
-    {
-     "id": "shen-yi-yi",
-     "title": "落到 RTX PRO 6000 上怎么搞弹性",
-     "level": 1
-    },
-    {
-     "id": "can-kao-lian-jie",
-     "title": "参考链接",
-     "level": 1
+      "name": "技术阅读",
+      "url": "/categories/技术阅读/",
+      "count": 6
     }
-   ],
-   "body_sha256": "9a5ac914ed048691d040710eed4bb9f363ac008664cfe65e1906b3f7384ed540"
-  },
-  {
-   "id": "rl-diffusion-survey",
-   "url": "/rl-diffusion-survey.html",
-   "title": "Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界",
-   "date": "2026-11-16T10:00:00.000Z",
-   "year": "2026",
-   "month": "2026-11",
-   "category": "技术阅读",
-   "category_url": "/categories/技术阅读/",
-   "tag": "llm",
-   "tag_url": "/tags/llm/",
-   "tags": [
-    "llm",
-    "diffusion"
-   ],
-   "summary": "梳理强化学习与扩散模型的结合：从语言、图像和视频，到机器人与科学建模。",
-   "minutes": 5,
-   "toc": [
+  ],
+  "tags": [
     {
-     "id": "bei-jing",
-     "title": "背景：从扩散到强化学习",
-     "level": 1
+      "name": "llm",
+      "url": "/tags/llm/",
+      "count": 6
     },
     {
-     "id": "san-da-zhong-shu",
-     "title": "三大瓶颈",
-     "level": 1
-    },
-    {
-     "id": "si-da-ling-yu",
-     "title": "四大领域：RL 如何改造扩散",
-     "level": 1
-    },
-    {
-     "id": "san-san-a",
-     "title": "语言：扩散 LLM",
-     "level": 2
-    },
-    {
-     "id": "san-san-b",
-     "title": "多模态：从文本到图像、视频",
-     "level": 2
-    },
-    {
-     "id": "san-san-c",
-     "title": "机器人：扩散策略与 VLA",
-     "level": 2
-    },
-    {
-     "id": "san-san-d",
-     "title": "科学模型：从分子到物理场",
-     "level": 2
-    },
-    {
-     "id": "jie-lun",
-     "title": "结论与路线图",
-     "level": 1
-    },
-    {
-     "id": "can-kao-lian-jie",
-     "title": "参考链接",
-     "level": 1
+      "name": "diffusion",
+      "url": "/tags/diffusion/",
+      "count": 1
     }
-   ],
-   "body_sha256": "98fd64a69611161461ad56aca71408ed73346d611a17549a5be5ee6bbaa1fa28"
-  },
-  {
-   "id": "leapquant",
-   "url": "/leapquant.html",
-   "title": "LeapQuant：近乎无损的 8-bit 线性注意力递归态量化",
-   "date": "2026-11-16T09:00:00.000Z",
-   "year": "2026",
-   "month": "2026-11",
-   "category": "技术阅读",
-   "category_url": "/categories/技术阅读/",
-   "tag": "llm",
-   "tag_url": "/tags/llm/",
-   "tags": [
-    "llm"
-   ],
-   "summary": "阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。",
-   "minutes": 6,
-   "toc": [
-    {
-     "id": "bei-jing",
-     "title": "背景",
-     "level": 1
-    },
-    {
-     "id": "fang-fa",
-     "title": "方法",
-     "level": 1
-    },
-    {
-     "id": "jie-guo",
-     "title": "结果",
-     "level": 1
-    },
-    {
-     "id": "shi-yong",
-     "title": "使用",
-     "level": 1
-    },
-    {
-     "id": "can-kao-lian-jie",
-     "title": "参考链接",
-     "level": 1
-    }
-   ],
-   "body_sha256": "34c0fce0ccff6a14d98f1ab8fc89aa5faabe2f12cb24e55946f3714a9e1f054d"
-  },
-  {
-   "id": "qwen-sft-6x",
-   "url": "/qwen-sft-6x.html",
-   "title": "Databricks：如何让 Qwen 3.8 27B 微调快6倍",
-   "date": "2026-11-16T08:00:00.000Z",
-   "year": "2026",
-   "month": "2026-11",
-   "category": "技术阅读",
-   "category_url": "/categories/技术阅读/",
-   "tag": "llm",
-   "tag_url": "/tags/llm/",
-   "tags": [
-    "llm"
-   ],
-   "summary": "围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。",
-   "minutes": 17,
-   "toc": [
-    {
-     "id": "she-zhi",
-     "title": "模型设置",
-     "level": 1
-    },
-    {
-     "id": "ji-chu-ben-zhong",
-     "title": "初始训练基准",
-     "level": 1
-    },
-    {
-     "id": "ke-gai-jin",
-     "title": "可以改进的地方",
-     "level": 1
-    },
-    {
-     "id": "rong-he-suan-zi",
-     "title": "融合内核",
-     "level": 1
-    },
-    {
-     "id": "pi-liu",
-     "title": "批处理、分词与填充",
-     "level": 1
-    },
-    {
-     "id": "jie-lun",
-     "title": "结论",
-     "level": 1
-    },
-    {
-     "id": "can-kao-lian-jie",
-     "title": "参考链接",
-     "level": 1
-    }
-   ],
-   "body_sha256": "891a3a39a439704a5c1b04611e27f880883c2659f4c9cefe285fa9ba93b97fbb"
-  }
- ],
- "categories": [
-  {
-   "name": "技术阅读",
-   "url": "/categories/技术阅读/",
-   "count": 5
-  }
- ],
- "tags": [
-  {
-   "name": "llm",
-   "url": "/tags/llm/",
-   "count": 5
-  },
-  {
-   "name": "diffusion",
-   "url": "/tags/diffusion/",
-   "count": 1
-  }
- ]
+  ]
 }

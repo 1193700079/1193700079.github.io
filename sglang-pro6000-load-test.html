@@ -1,0 +1,82 @@
+---
+layout: "blog-post"
+post_id: "sglang-pro6000-load-test"
+title: "8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你"
+description: "nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、监控链路里被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 的观测口径、32 并发到底扛多少用户，以及 HiCache 单机版和跨机分布式四件套的差别。"
+---
+{% raw %}
+<p>一台 8 卡 RTX PRO 6000 的推理机，nvidia-smi 显示每张卡 97% 利用率，看起来已经被榨干了。但同一时刻功耗只有 170W，离 600W 上限还有三倍余量，显存池 93GiB 里只躺着 2% 的 KV。这台机器到底满没满？这篇文章把一次真实的 10 分钟监控窗口拆开讲：利用率为什么是个谎言、监控数据怎么被日志噪音骗、TTFT/TPOT 分别量的是什么、32 路并发能对应多少用户、以及 SGLang HiCache 的单机能力与跨机分布式能力的边界。</p>
+<span id="more"></span>
+
+<h1 id="ji-qi-yu-yun-xing-xian-zhuang"><a href="#ji-qi-yu-yun-xing-xian-zhuang" class="headerlink" title="机器与运行现状"></a>机器与服务现状</h1>
+<p>8 张 NVIDIA RTX PRO 6000 Blackwell Server Edition，单卡 96GiB 显存，功耗上限 600W。上面跑一个 SGLang 推理服务，承载一个 27B 级别的长 context 编码模型（1M context），关键启动参数：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">python -m sglang.launch_server \</span><br><span class="line">  --tp-size 8 --context-length 1048576 --max-running-requests 32 \</span><br><span class="line">  --enable-hierarchical-cache --hicache-size 128 --hicache-write-policy write_through \</span><br><span class="line">  --mem-fraction-static 0.85 --speculative-algorithm DFLASH \</span><br><span class="line">  --speculative-num-draft-tokens 8 --reasoning-parser qwen3-thinking \</span><br><span class="line">  --tool-call-parser qwen3_coder --enable-cache-report --enable-mscclpp</span><br></pre></td></tr></table></figure>
+<p>服务前面挂一个 fallback 代理（primary 是本地 SGLang，备池是另一组 nInfer 实例），请求经代理路由。这套配置的意图很清楚：tp=8 把 27B 权重摊到 8 卡，留足并发余量，长 context 场景下 1M 池子随便灌。</p>
+
+<h1 id="li-yong-lü-shi-ge-lie-huan"><a href="#li-yong-lü-shi-ge-lie-huan" class="headerlink" title="利用率是个谎言"></a>利用率是个谎言</h1>
+<p>nvidia-smi 的 <code>utilization.gpu</code> 指标有个著名的坑：它统计的是「采样窗口内 GPU 有任何一个 kernel 在跑的时间占比」，而不是算力占用率。一条 50k+ token 的长 decode 流，每步 kernel 很轻，但步数密、持续不断，就把这个「时间占比」顶到了 97%——而实际功率只有 170W，算力余量三倍。</p>
+<p>真正能区分「假满」和「真满」的是三个数：</p>
+<ul>
+<li><strong>power.draw 相对 power.limit</strong>。170W/600W 说明算力还有很大空间；逼近 limit 才是带宽或功耗撞墙。</li>
+<li><strong>running-req / queue-req</strong>。SGLang 日志每步 decode batch 都打一行，单条 50k context 的请求 running-req=1、queue-req=0，说明根本没有并发。</li>
+<li><strong>KV token 使用率</strong>。full token usage 0.02 意味着 93GiB 显存池只用了 2%，长 context 也才 50k token。</li>
+</ul>
+<p>结论是：<strong>utilization 97% 只是「有 kernel 在跑」，不是「机器满了」</strong>。判断推理机是否榨干，要看功率逼近 limit、KV 池逼近打满、并发逼近 max-running-requests 这三件事同时发生。</p>
+
+<h1 id="shi-fen-zhong-jian-kong-chuang-kou"><a href="#shi-fen-zhong-jian-kong-chuang-kou" class="headerlink" title="十分钟监控窗口的坑"></a>十分钟监控窗口的坑</h1>
+<p>挂了个 30 秒采样一次的监控，直接踩了两个坑：</p>
+<ul>
+<li><strong>日志被 404 探针刷屏</strong>。上游有个监控系统每几秒打一次 <code>/metrics</code> 端点，而 SGLang 启动参数里没开 <code>--enable-metrics</code>，于是每条都是 404 Not Found。十分钟里刷出四万多条 404，把真正的 batch 行顶出日志 tail，监控脚本 grep 不到 batch 行就静默，误判成「没有请求」。</li>
+<li><strong>30 秒采样撞上波间空隙</strong>。请求是突发型的：一波请求打上来，功率冲到 2200W，请求跑完，功率跌回 900W 的空闲底噪。30 秒采样间隔正好卡在波间空隙里，采到的永远是 running-req=0，而残留的吞吐行是上一波请求的最后一条 batch 行，不是当前状态。</li>
+</ul>
+<p>这两个坑叠加，让监控看起来「没变化」，实际上机器一直在干活。正确的做法是：统计整个窗口的 batch 行分布（并发数直方图、功率峰值、KV 使用率），而不是采样瞬时值。瞬时值适合告警，分布才适合判断负载形态。</p>
+
+<h1 id="ttft-tpot-de-kou-jing"><a href="#ttft-tpot-de-kou-jing" class="headerlink" title="TTFT / TPOT 的口径"></a>TTFT / TPOT 的口径</h1>
+<p>推理侧有两个最核心的延迟指标，口径要分清：</p>
+<table><thead><tr><th>指标</th><th>度量</th><th>和负载的关系</th></tr></thead><tbody>
+<tr><td>TTFT（Time To First Token）</td><td>请求发出 → 首 token 返回，即 prefill 耗时</td><td>和并发压力关系弱（KV cache 命中能压下去），但排队时会暴涨</td></tr>
+<tr><td>TPOT（Time Per Output Token）</td><td>首 token 后每个 token 的间隔，即 decode 单流延迟</td><td>随并发<strong>线性变差</strong>，是判断「带宽撞墙」最早的信号</td></tr>
+</tbody></table>
+<p>拿 TTFT 判断「机器有没有被打满」会误判：prefill 是计算密集，KV cache 命中时 TTFT 可以很漂亮，但 decode 带宽可能已经饱和。该看的是 TPOT 的分布——TPOT 开始上涨，就是并发逼近带宽极限的前兆。反过来，TPOT 平稳（几个毫秒级）说明 decode 不抖，机器还有余量。</p>
+
+<h1 id="san-shi-er-yan-fa-cheng-duo-shao-yong-hu"><a href="#san-shi-er-yan-fa-cheng-duo-shao-yong-hu" class="headerlink" title="三十二并发能撑多少用户"></a>三十二并发能撑多少用户</h1>
+<p><code>max-running-requests 32</code> 不是「32 个用户」，是同时最多 32 条请求在解码，超出的进 queue-req 排队。换算成用户数要代入占用率公式：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">并发请求数 = 活跃用户数 × 单条请求占用时长 ÷ 每用户两次请求间隔</span><br><span class="line">单条占用 ≈ prefill 5-10s + decode 数千 token @ ~400 tok/s ≈ 15-40s</span><br><span class="line">用户间隔 ≈ 60-180s（agent 会话里跑工具、读输出的时间）</span><br></pre></td></tr></table></figure>
+<p>单用户占用率约 0.2 条流。32 路 ÷ 0.2 ≈ 150–160 个活跃 agent 会话。但真正的天花板不是 32 这个数字，是 GPU 带宽：长 decode 是 memory-bandwidth-bound，并发翻倍后单流吞吐掉一半，实测大概 10–20 路就把带宽打满，32 路是理论上限、实际先撞延迟墙。KV 池不是瓶颈，50k 请求 × 32 路对 1M 池只用了零头。</p>
+<p>实际可用的答案：稳态扛住、延迟可接受是 10–20 个并发 agent 会话（约 50–100 个真实用户，考虑人在读、工具在跑的空闲时间）；32 路并发能排进去但单流延迟翻倍；超过后请求排队，queue-req 开始涨，这是该看的告警指标。</p>
+
+<h1 id="dong-tai-kuo-suo-rong-de-jie-dian"><a href="#dong-tai-kuo-suo-rong-de-jie-dian" class="headerlink" title="动态扩缩容的节点"></a>动态扩缩容的节点</h1>
+<p>「人少时 token 速率极快、人多时用满」这个目标，调度层其实已经做到了——SGLang 的 continuous batching 就是这个机制：人少时单流吃满全部带宽（单流吞吐就是这台机的理论上限），人多时自动 batch 拉聚合吞吐。这不是要开发的功能，是已经拿到的。</p>
+<p>GPU 层真正的动态扩缩容，工业界现状分几档：</p>
+<table><thead><tr><th>方案</th><th>成熟度</th><th>说明</th></tr></thead><tbody>
+<tr><td>DP 副本 + 队列深度扩缩（sglang-router / K8s + Karpenter）</td><td>生产可用</td><td>多副本同模型，队列深了加副本、队列空了杀</td></tr>
+<tr><td>Serverless GPU 平台（Modal / RunPod / Baseten）</td><td>生产可用</td><td>人少时 GPU 直接释放，按秒计费，代价是冷启动 30–60s</td></tr>
+<tr><td>PD 分离（prefill/decode 拆到不同机器）</td><td>SGLang 已支持</td><td>decode 机专职吐 token，长 context 场景 TTFT 和 TPOT 都优化</td></tr>
+<tr><td>动态 TP（运行时改 tp-size）</td><td>研究阶段</td><td>FlexTP/DMT 论文有，SGLang/vLLM 的 tp-size 启动时固定，改就要重启</td></tr>
+<tr><td>MIG 切卡</td><td>本机不支持</td><td>RTX PRO 6000 是工作站系，没有 MIG（只有 A100/H100/B200 数据中心卡有）</td></tr>
+</tbody></table>
+<p>8 卡单机上，「人少时少用卡」做不到（没有 MIG、TP 改不了、权重常驻底噪 ~120W/卡 降不下去）。真正能落的是队列深度驱动的横向扩缩：加 <code>--enable-metrics</code> 让 Prometheus 能读到 <code>sglang:num_queue_reqs</code>，写一个 scaler——队列持续 &gt;0 超过 N 分钟就起一台同配置机器挂进 fallback 代理的上游列表，队列持续为 0 就关它。fallback 代理本身已经是个多后端路由，天然就是负载均衡器，加后端只需改一行环境变量。</p>
+<p>但先泼个冷水：当前负载平均 1–2 路、峰值 5 路，连舒适区（12–16 路）的零头都没到。这种负载下做动态扩缩，大部分时间 scaler 都会判「人少」，省下的电是第二台机器的电费——而第二台机器现在根本不存在。真正的问题不是撑不住，是那台机 95% 时间在空转烧 ~900W。解法是降配（tp=4）或者喂更多并发，而不是扩缩容。</p>
+
+<h1 id="hikache-de-jie-lu"><a href="#hikache-de-jie-lu" class="headerlink" title="HiCache 的解路"></a>HiCache 的解路</h1>
+<p>SGLang 的 HiCache 是分层 KV cache：GPU 显存一级 + 主机内存二级。本机开的是单机版 HiCache——128GiB 主机内存二级缓存，write_through 写穿策略。实际效果：agent 会话重复的 system prompt + 历史前缀，第二次直接命中 host 层，TTFT 省掉整段 prefill。对 50k+ context 的长请求这是真在起作用的，日志里 full token usage 0.02 但请求秒回，一部分就是它。</p>
+<p>文章标题里说的跨并行分布式四件套——CP 页分片、PP 缓存同步、统一 KV 布局、P/D 复用——<strong>本机一个都没上</strong>：</p>
+<table><thead><tr><th>特性</th><th>需要的条件</th><th>本机现状</th></tr></thead><tbody>
+<tr><td>CP 页分片</td><td><code>--cp-size &gt; 1</code>（context parallel 多实例共享 KV）</td><td>cp=1，单实例</td></tr>
+<tr><td>PP 缓存同步</td><td><code>--pp-size &gt; 1</code> + 跨阶段缓存对齐</td><td>pp=1</td></tr>
+<tr><td>P/D 复用</td><td><code>--disaggregation-mode</code> + 独立的 prefill 池/decode 池</td><td>没有分离，单池</td></tr>
+<tr><td>统一 KV 布局</td><td>多节点间用 Mooncake 之类的传输引擎共享前缀</td><td>单节点，无跨机传输</td></tr>
+</tbody></table>
+<p>那套东西是给「多节点 PD 分离 + 多副本共享同一份前缀缓存」的场景做的——prefill 节点和 decode 节点分开部署，请求在两个池之间带着 KV 迁移，靠统一布局避免重复计算。单机 tp=8、单池的形态下，HiCache 的 host 层已经把前缀复用最值钱的那部分（本机内）吃掉了。跨机 KV 共享的价值要等真做出「10 台机器 + PD 分离」时才显现，而那正是动态扩缩容的前提。</p>
+
+<h1 id="jie-lun-yu-xia-yi-bu"><a href="#jie-lun-yu-xia-yi-bu" class="headerlink" title="结论与下一步"></a>结论与下一步</h1>
+<p>这台 8 卡 PRO 6000 推理机的实测画像：utilization 97% 是「有 kernel 在跑」，不是「机器满了」；真正的负载是突发型的单条长请求，平均并发 1–2 路，功率在 900W 空闲底噪和 2200W 请求峰之间振荡；KV 池只用了零头，显存和功率都有大量余量。监控链路里，<code>--enable-metrics</code> 没开，上游 Prometheus 探针打了一万多次 404；nInfer 备池全挂，fallback 链实际只有 SGLang 单机扛。</p>
+<p>要榨干或者省电，三个动作按优先级排：</p>
+<ul>
+<li><strong>加 <code>--enable-metrics</code></strong>。零风险（不改推理行为），让 Prometheus 能读到 num_queue_reqs、token_usage、time_to_first_token_seconds、e2e_request_latency_seconds，设备侧指标和请求侧的 TTFT/TPOT 合起来才是全图。</li>
+<li><strong>修 nInfer 备池</strong>。fallback 链是断的，SGLang 一挂直接全停，这是比「榨不榨干」更紧迫的可用性风险。</li>
+<li><strong>降配或喂并发</strong>。tp=8 对一个 27B 模型在平均 1–2 路并发下明显过度配置，tp=4 单流延迟几乎不变、省一半电；要拉满则把客户端并发顶到 16–32 路，让 TPOT 开始上涨、功率逼近 4800W 上限。</li>
+</ul>
+<p>动态扩缩容和 HiCache 跨机分布式，都是「先有足够请求量、再有横向多节点」之后的事。先回答请求量增长曲线，再决定扩缩容还是降配。</p>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

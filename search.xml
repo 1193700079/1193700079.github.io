@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
     <entry>
+    <title>8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你</title>
+    <url>/sglang-pro6000-load-test.html</url>
+    <content><![CDATA[阅读 nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。<span id="more"></span>]]></content>
+  </entry>
+    <entry>
     <title>Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型</title>
     <url>/multi-harness-rl.html</url>
     <content><![CDATA[阅读 Multi-Harness RL：同一模型换 harness 掉分比换模型还狠。FineEnvs 的 capture proxy 把 Claude Code/Codex/OpenCode/Mini-SWE-Agent 变成黑盒 RL 环境，2xH100 GRPO 配方与结果。<span id="more"></span>]]></content>

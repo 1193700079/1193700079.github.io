@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Databricks：如何让 Qwen 3.8 27B 微调快6倍</title>
+    <url>/qwen-sft-6x.html</url>
+    <content><![CDATA[GPU 平均利用率已经 98%，训练却还能快 6 倍。Databricks 完整记录了排查过程、算子变化与数据打包细节。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>css study 01</title>
     <url>/css-study-01.html</url>
     <content><![CDATA[<p>介绍一些css基础知识</p>

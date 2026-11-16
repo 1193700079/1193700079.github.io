@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
+    <title>大模型加速优化：从一张全景图到一套方法论</title>
+    <link href="https://1193700079.github.io/llm-accel-panorama.html"/>
+    <id>https://1193700079.github.io/llm-accel-panorama.html</id>
+    <published>2026-11-16T14:00:00.000Z</published>
+    <updated>2026-11-16T14:00:00.000Z</updated>
+    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子</title>
     <link href="https://1193700079.github.io/tilelang.html"/>
     <id>https://1193700079.github.io/tilelang.html</id>

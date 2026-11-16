@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>大模型加速优化：从一张全景图到一套方法论</title>
+    <url>/llm-accel-panorama.html</url>
+    <content><![CDATA[本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从"是什么、为什么、怎么做、有什么坑"讲清楚。先建立全景认知，再逐个深入。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子</title>
     <url>/tilelang.html</url>
     <content><![CDATA[TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。<span id="more"></span>]]></content>

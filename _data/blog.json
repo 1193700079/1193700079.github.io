@@ -1,6 +1,257 @@
 {
   "posts": [
     {
+      "id": "tilelang",
+      "url": "/tilelang.html",
+      "title": "一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子",
+      "date": "2026-11-16T12:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。",
+      "minutes": 22,
+      "toc": [
+        {
+          "id": "di-yi-zhang",
+          "title": "第一章 · 编程模型进化史：一条主线，六次抉择",
+          "level": 1
+        },
+        {
+          "id": "simd",
+          "title": "SIMD：一条指令，多个数据",
+          "level": 2
+        },
+        {
+          "id": "simt-cuda",
+          "title": "SIMT + CUDA：把内存层级摆上台面，也让程序员全责",
+          "level": 2
+        },
+        {
+          "id": "opencl",
+          "title": "OpenCL 的教训：只抽象计算、不抽象放置，注定失败",
+          "level": 2
+        },
+        {
+          "id": "triton",
+          "title": "Triton：编译器接管分块，但把旋钮藏进黑箱",
+          "level": 2
+        },
+        {
+          "id": "shou-ling",
+          "title": "收敛：为什么是 tile",
+          "level": 2
+        },
+        {
+          "id": "di-er-zhang",
+          "title": "第二章 · TileLang 是怎么被提出来的",
+          "level": 1
+        },
+        {
+          "id": "dong-ji",
+          "title": "动机：500 行只有作者能懂的调度代码",
+          "level": 2
+        },
+        {
+          "id": "she-ji-zhe-xue",
+          "title": "设计哲学：一句话，和三级用户",
+          "level": 2
+        },
+        {
+          "id": "bian-yi-qi",
+          "title": "编译器骨架：FTG 与「推荐 + 推理」两阶段",
+          "level": 2
+        },
+        {
+          "id": "xiao-guo",
+          "title": "效果与出身",
+          "level": 2
+        },
+        {
+          "id": "duo-hou-duan",
+          "title": "多后端与昇腾：一个被低估的事实",
+          "level": 2
+        },
+        {
+          "id": "lun-wen",
+          "title": "论文本身说了什么",
+          "level": 2
+        },
+        {
+          "id": "di-san-zhang",
+          "title": "第三章 · 编程模式：看懂骨架",
+          "level": 1
+        },
+        {
+          "id": "gan-jia",
+          "title": "骨架：一个 GEMM 的完整解剖",
+          "level": 2
+        },
+        {
+          "id": "fen-gong",
+          "title": "分工原则：你写数据流，编译器管调度",
+          "level": 2
+        },
+        {
+          "id": "nei-cun-ceng-ji",
+          "title": "内存层级：T.alloc_* 就是放置决策的语法",
+          "level": 2
+        },
+        {
+          "id": "liu-shui",
+          "title": "流水：一个 num_stages 参数背后",
+          "level": 2
+        },
+        {
+          "id": "bian-yi-guan-xian",
+          "title": "编译管线：五段路与三级用户",
+          "level": 2
+        },
+        {
+          "id": "di-si-zhang",
+          "title": "第四章 · 对着 DeepInfer 源码学：六个真实实例",
+          "level": 1
+        },
+        {
+          "id": "shi-li-1",
+          "title": "实例 1：SWA 索引展开——34 行的完整 TileLang 算子",
+          "level": 2
+        },
+        {
+          "id": "shi-li-2",
+          "title": "实例 2：DSpark 的置信度头——GEMV 宏与「站在草稿肩膀上」",
+          "level": 2
+        },
+        {
+          "id": "shi-li-3",
+          "title": "实例 3：置信度调度 kernel——调度本身也是 TileLang",
+          "level": 2
+        },
+        {
+          "id": "shi-li-4",
+          "title": "实例 4：同一个算子的昇腾版——同一语义，硬件感知分块",
+          "level": 2
+        },
+        {
+          "id": "shi-li-5",
+          "title": "实例 5：EPLB——负载均衡可以优雅地不是 kernel",
+          "level": 2
+        },
+        {
+          "id": "shi-li-6",
+          "title": "实例 6：用 environ.py 把六个实例串成一张图",
+          "level": 2
+        },
+        {
+          "id": "xie-zai-zui-hou",
+          "title": "写在最后：怎么把这份源码变成你的知识",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考资料",
+          "level": 1
+        }
+      ],
+      "body_sha256": "8588d57552082635d1a9cb96847d4d094145de5b85526b94f503c6f4f3b0c113"
+    },
+    {
+      "id": "stable-diffusion-cpp",
+      "url": "/stable-diffusion-cpp.html",
+      "title": "stable-diffusion.cpp：图像生成领域的纯 C/C++ 推理框架",
+      "date": "2026-11-16T11:30:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm",
+        "diffusion"
+      ],
+      "summary": "基于 GGML 的 C/C++ 扩散模型推理框架，类比 llama.cpp：多模型、多后端、内存优化与二次开发方向。",
+      "minutes": 25,
+      "toc": [
+        {
+          "id": "ta-shi-shen-me",
+          "title": "它到底是什么",
+          "level": 1
+        },
+        {
+          "id": "zhi-chi-de-mo-xing",
+          "title": "支持的模型早已不止 Stable Diffusion",
+          "level": 1
+        },
+        {
+          "id": "jia-suan-hou-duan",
+          "title": "底层计算：多种硬件后端",
+          "level": 1
+        },
+        {
+          "id": "nei-cun-guan-li",
+          "title": "内存管理：扩散模型最吃资源",
+          "level": 1
+        },
+        {
+          "id": "bian-yi-yun-xing",
+          "title": "实际怎么编译和运行",
+          "level": 1
+        },
+        {
+          "id": "bian-yi-cpu",
+          "title": "编译 CPU 版本",
+          "level": 2
+        },
+        {
+          "id": "bian-yi-cuda",
+          "title": "编译 CUDA 版本",
+          "level": 2
+        },
+        {
+          "id": "sheng-cheng-tu-xiang",
+          "title": "准备模型并生成图像",
+          "level": 2
+        },
+        {
+          "id": "er-ci-kai-fa",
+          "title": "二次开发方向",
+          "level": 1
+        },
+        {
+          "id": "yi-yi",
+          "title": "对 C++ 和边缘 AI 开发的意义",
+          "level": 1
+        },
+        {
+          "id": "xu-ke-zheng-ming",
+          "title": "许可证和实际使用注意",
+          "level": 1
+        },
+        {
+          "id": "xing-neng",
+          "title": "性能要实测",
+          "level": 1
+        },
+        {
+          "id": "shou-wei",
+          "title": "最后聊几句",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "d3898fb8281ef29f6d878e0bf6163f4d73129afa9ad2596d2208972dcb9ade28"
+    },
+    {
       "id": "sglang-pro6000-load-test",
       "url": "/sglang-pro6000-load-test.html",
       "title": "8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你",
@@ -331,19 +582,19 @@
     {
       "name": "技术阅读",
       "url": "/categories/技术阅读/",
-      "count": 6
+      "count": 8
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 6
+      "count": 8
     },
     {
       "name": "diffusion",
       "url": "/tags/diffusion/",
-      "count": 1
+      "count": 2
     }
   ]
 }

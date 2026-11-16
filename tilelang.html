@@ -1,0 +1,96 @@
+---
+layout: "blog-post"
+post_id: "tilelang"
+title: "一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子"
+description: "TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。"
+---
+{% raw %}
+<p>这篇讲四件事：高性能算子编程这三十年是怎么一步步走到 TileLang 的；TileLang 被提出时的核心思路是什么；它的编程模式长什么样；以及 DeepSeek 开源的 DeepInfer 里，TileLang 算子长什么样。所有代码都来自 deepseek-ai/DeepInfer 与 tile-ai/tilelang 的真实源码。TileLang 是 ICLR 2026 Oral 的工作，论文主张一句话：<strong>在可编程性与性能之间架桥</strong>。</p>
+<span id="more"></span>
+
+<h1 id="di-yi-zhang"><a href="#di-yi-zhang" class="headerlink" title="第一章 · 编程模型进化史：一条主线，六次抉择"></a>第一章 · 编程模型进化史：一条主线，六次抉择</h1>
+<p>本章只有一条主线：<strong>性能的命门从来不是「算得多快」，而是「数据放在哪、怎么搬」</strong>。从标量时代到今天，每一个编程模型的诞生，本质上都是在重新划分同一份决策权——由谁来决定数据的放置与搬运。</p>
+<table><thead><tr><th>时代</th><th>谁来写计算</th><th>数据放哪谁说了算</th><th>代价</th></tr></thead><tbody><tr><td>标量时代</td><td>一条指令算一个数</td><td>编译器与缓存代劳</td><td>性能靠堆主频</td></tr><tr><td>SIMD</td><td>一条指令同时算多个数</td><td>硬件写死（对齐、宽度）</td><td>不灵活，分支难受</td></tr><tr><td>SIMT + CUDA</td><td>写「一个线程」的代码 × 千万线程</td><td>程序员手写（寄存器/共享内存/HBM）</td><td>手艺活，难写难维护</td></tr><tr><td>OpenCL</td><td>一套 C 代码跑所有设备</td><td>没人管（放置不在抽象里）</td><td>能跑，但不快</td></tr><tr><td>Triton</td><td>Python 写 block 级程序</td><td>编译器（黑箱 pass）</td><td>关键旋钮不可控</td></tr><tr><td>TileLang</td><td>写 tile 级数据流</td><td>语言显式表达 + 编译器推理</td><td>——</td></tr></tbody></table>
+<h2 id="simd"><a href="#simd" class="headerlink" title="SIMD：一条指令，多个数据"></a>SIMD：一条指令，多个数据</h2>
+<p>SIMD（Single Instruction, Multiple Data）——与其发 8 条加法，不如一条指令同时加 8 个数。宽度是硬件写死的：x86 SSE 一条算 128 bit（4 个 float32）、AVX2 是 256 bit、AVX-512 是 512 bit；ARM NEON 是 128 bit。类比：SIMD 像一次抱 4 个箱子，前提是箱子必须码齐（对齐）、胳膊长度固定（宽度写死）。数据一旦不规则（稀疏访问、分支），效率立刻掉下来。SIMD 第一次把「数据怎么摆」变成性能问题，答案是：<strong>硬件替你定死</strong>。</p>
+<h2 id="simt-cuda"><a href="#simt-cuda" class="headerlink" title="SIMT + CUDA：把内存层级摆上台面，也让程序员全责"></a>SIMT + CUDA：把内存层级摆上台面，也让程序员全责</h2>
+<p>NVIDIA 走了 SIMT（Single Instruction, Multiple Threads）：硬件以 warp（32 线程）为单位锁步，每线程有独立寄存器、地址、分支掩码。两个后果——心智模型变了（写「一个线程」的代码跑在千万线程上），分支有代价（两拨线程用掩码轮流执行，一半空转，即分支发散）。CUDA 在 SIMT 之上暴露了三级内存层级：线程/块/网格 对应 寄存器/共享内存/HBM。寄存器接近单周期、共享内存几十周期、HBM 几百周期，带宽依次差约一个数量级。高性能 CUDA 的全部艺术就是：把数据切成 tile 搬进快的存储里算，算完搬走，再靠双缓冲、软件流水把「搬」和「算」重叠，还要躲开 bank conflict。代价同样明确：一个 FlashAttention 写上千行是常态，难写难调难维护，换块芯片就重写。CUDA 证明了两件事：<strong>管得细才有性能；全手动不可持续。</strong></p>
+<h2 id="opencl"><a href="#opencl" class="headerlink" title="OpenCL 的教训：只抽象计算、不抽象放置，注定失败"></a>OpenCL 的教训：只抽象计算、不抽象放置，注定失败</h2>
+<p>OpenCL 的野心是「一套代码跑所有设备」（GPU/CPU/FPGA/DSP）。它做到了「能跑」，但「跑得快」失败得很彻底。根因一句话：<strong>它抽象了「计算」（kernel 和工作项），却没抽象「数据放在哪、怎么搬」——而性能恰恰由后者决定</strong>。开发者只能写平台特化分支，等于每种硬件重写一遍。这是全章最重要的教训，也是理解 TileLang 的钥匙：任何高性能编程模型，都必须把数据放置和搬运放进抽象里。</p>
+<h2 id="triton"><a href="#triton" class="headerlink" title="Triton：编译器接管分块，但把旋钮藏进黑箱"></a>Triton：编译器接管分块，但把旋钮藏进黑箱</h2>
+<p>2021 年 OpenAI 发布 Triton：用 Python 写 block 级程序，线程映射和分块由编译器自动完成。效果立竿见影——比 CUTLASS 少一个数量级代码，很快成为 PyTorch 生态的默认 kernel 语言，证明了「编译器可以管调度」。但代价也清晰：tile 复用、流水调度、共享内存策略这些关键旋钮，被藏进编译器不透明的 pass 里，想精确控制只能绕开整个抽象。TileLang 论文给了个扎眼数据：<strong>MLA 算子的 Triton 实现写了 130 行，性能只有手写 CUDA 的 14.2%</strong>。</p>
+<h2 id="shou-ling"><a href="#shou-ling" class="headerlink" title="收敛：为什么是 tile"></a>收敛：为什么是 tile</h2>
+<p>把六个时代摆一起，主线就浮出来了：所有高性能硬件都有存储层级、访问速度差一两个数量级 → <strong>分块搬运是所有硬件共享的不变量</strong>；CUDA 证明细粒度控制「放在哪、怎么搬」才有性能；OpenCL 证明不把放置放进抽象就一定失败；Triton 证明编译器能管调度——问题是它把旋钮藏起来了而不是交出来。于是问题收敛成：能不能有一个编程模型，把「块」（tile）提升为一等公民——细到能表达存储层级、线程切分和流水，粗到能形成跨硬件稳定的 API，让用户显式写数据流、把调度交给编译器推理？2025 年 1 月，TileLang 开源，回答是：能。</p>
+
+<h1 id="di-er-zhang"><a href="#di-er-zhang" class="headerlink" title="第二章 · TileLang 是怎么被提出来的"></a>第二章 · TileLang 是怎么被提出来的</h1>
+<h2 id="dong-ji"><a href="#dong-ji" class="headerlink" title="动机：500 行只有作者能懂的调度代码"></a>动机：500 行只有作者能懂的调度代码</h2>
+<p>发起人王磊博士在微软研究院实习做混合精度计算库 BitBLAS 时，为每个算子手写约 500 行调度原语——「写得虽然优雅，但只有我自己能看懂，很难找到人维护或扩展」。同期他在两个方向碰壁：Triton 无法精确控制线程行为和内存层级（比如「反量化该在寄存器还是共享内存做」这种决定性能的细节）；TVM 的 Schedule 体系又难以描述 FlashAttention 这类复杂算子。两头都不满足，于是有了 TileLang 的想法：<strong>用户写数据流，编译器管调度</strong>。</p>
+<h2 id="she-ji-zhe-xue"><a href="#she-ji-zhe-xue" class="headerlink" title="设计哲学：一句话，和三级用户"></a>设计哲学：一句话，和三级用户</h2>
+<p>TileLang 把算子开发拆成两块：<strong>数据流</strong>（数据放在哪一级存储、怎么搬、算什么——用户显式写）和<strong>调度</strong>（线程绑定、数据布局、流水划分、指令选择——编译器自动推理）。同时设计三级用户接口：<strong>Beginner</strong> 写高级表达式全自动调度；<strong>Developer</strong> 写 tile 级程序（主流用法）；<strong>Expert</strong> 用 <code>T.annotate_layout</code>、<code>T.use_swizzle</code>、<code>T.call_extern</code> 直接控制布局和指令。同一个编译器管线，注解写得越多控制越细。</p>
+<h2 id="bian-yi-qi"><a href="#bian-yi-qi" class="headerlink" title="编译器骨架：FTG 与「推荐 + 推理」两阶段"></a>编译器骨架：FTG 与「推荐 + 推理」两阶段</h2>
+<p>TileLang 程序先被表示成 <strong>FTG（Fused Tile-level Dataflow Graph）</strong>——节点是 tile 算子、边是数据依赖。之后是两阶段自动补全。</p>
+<p><strong>阶段一 Tile Recommendation（推荐）</strong>：调优空间有六维（tile 大小、存储放置、warp 切分、流水级数、指令、布局），穷举不可行。TileLang 用静态 roofline 代价模型给候选配置排序——<code>Time = max(MemoryTraffic/Bandwidth, Computation/Performance) + t_intrinsic</code>（遍历各存储层级和计算单元）。模型假设计算与访存完美重叠，不需要跑真机就能排序，且输出的是排序列表而非唯一答案（human-in-the-loop，可采纳/锁定/手动覆盖）。</p>
+<p><strong>阶段二 Tile Inference（推理）</strong>：用约束传播补齐剩余配置——Layout Inference 把多维索引映射成物理地址（Strict/General/Free 三类策略）；Pipeline Inference 把搬数据和算数据自动重叠（用户只写 <code>num_stages</code>）；Instruction Inference 通过 <code>T.call_extern</code> 对接 CUTLASS CuTe / AMD CK 等 tile 库，按 shape 和 dtype 自动选 mma/dp4a 等指令。</p>
+<h2 id="xiao-guo"><a href="#xiao-guo" class="headerlink" title="效果与出身"></a>效果与出身</h2>
+<table><thead><tr><th>对比</th><th>加速</th><th>说明</th></tr></thead><tbody><tr><td>vs Triton（H100）</td><td>平均 3.02×</td><td>9 类代表性算子</td></tr><tr><td>vs Triton（MI300X）</td><td>平均 2.65×</td><td>9 类代表性算子</td></tr><tr><td>MLA vs PyTorch</td><td>841×</td><td>手写 FlashMLA 1040×、Triton 151×</td></tr><tr><td>代码量</td><td>最多减少 85.5%</td><td>MHA 66 行 vs ThunderKittens 185 行</td></tr></tbody></table>
+<p>消融实验更值得品：H100 上贡献最大的是 warp 切分（+4.34×），MI300X 上却是存储放置（+6.56×）——<strong>同一套最优配置跨架构不可复制</strong>，这正是「硬件感知默认值」必须由平台专属代价模型生成的证据。出身：Tile-AI 社区，2025-01-20 开源，基于 Apache TVM；初始开发者为北大杨智教授团队（王磊等），部分工作完成于微软研究院实习期。生态上，微软 BitBLAS 已完全基于 TileLang，DeepSeek 把它带进了生产——第四章的主角。</p>
+<h2 id="duo-hou-duan"><a href="#duo-hou-duan" class="headerlink" title="多后端与昇腾：一个被低估的事实"></a>多后端与昇腾：一个被低估的事实</h2>
+<p>TileLang 的多后端不是「适配」出来的，是架构上长出来的：目标后端（CUDA/ROCm/Metal/Ascend/CPU/WebGPU）负责方言、pass 管线、代码生成；执行后端（tvm_ffi/nvrtc/cython/torch/cutedsl/pto）负责 Build/JIT/运行时，两者通过 BackendModule 清单显式注册。新芯片接入 = 写一个注册清单 + 方言 + 管线。<strong>昇腾 950 后端的第一版实现，主要贡献者是 9 名 DeepSeek 工程师</strong>（感谢名单见 tilelang/ascend/README.md）——不是芯片厂商，也不是编译器公司。一家头部模型公司亲自下场写芯片后端，这个信号比任何评测数字都值得芯片同行重视。</p>
+<h2 id="lun-wen"><a href="#lun-wen" class="headerlink" title="论文本身说了什么"></a>论文本身说了什么</h2>
+<p>论文有两个版本：arXiv:2504.17577（2025-04 提交，《TileLang: A Composable Tiled Programming Model for AI Systems》）和 ICLR 2026 终稿《TileLang: Bridge Programmability and Performance in Modern Neural Kernels》（Oral，2026-04-23 宣讲）。标题从「composable tiled programming model」改成「bridge」，恰好点出核心主张。摘要拆成三句读：</p>
+<ul>
+<li><strong>问题</strong>：现代 AI 算法越来越多用融合 kernel 换性能，但 Triton 这类编译器缺乏细粒度控制，实现依然复杂。</li>
+<li><strong>方案</strong>：TileLang 提供显式的 tile 级原语（内存放置、数据搬运、并行调度），外加两个关键技术——tile inference（把 tile 程序建模成融合图，从部分注解自动推导配置）和 tile recommendation（基于硬件 profile 与启发式推荐高效配置）。</li>
+<li><strong>结果</strong>：80 行以内表达多种融合注意力 kernel，代码量较手工实现最多减少 90%；对比 Triton 最高加速 5×（H100）/ 6×（AMD）。</li>
+</ul>
+<p>论文也诚实列了局限：tile 粒度以下的硬件行为无法通过稳定可移植 API 表达（与最极端的手工优化仍有差距）；系统建立在 TVM 之上；评测集中于 H100/MI300X 与注意力/GEMM 类算子。两个校准：①论文写于 2025-04，是纯 GPU 视角——昇腾后端（2026-09）和 DeepInfer 生产化（2026-10）都发生在论文之后，属社区演化；②结论是「架桥」不是「取代」——瞄准 Triton 与手写 CUDA 之间的真空地带。带着这两点读第三、四章，就不会把 TileLang 神化。</p>
+
+<h1 id="di-san-zhang"><a href="#di-san-zhang" class="headerlink" title="第三章 · 编程模式：看懂骨架"></a>第三章 · 编程模式：看懂骨架</h1>
+<h2 id="gan-jia"><a href="#gan-jia" class="headerlink" title="骨架：一个 GEMM 的完整解剖"></a>骨架：一个 GEMM 的完整解剖</h2>
+<p>把 TileLang 程序压缩成六句话，就是编程模式的全部骨架：<strong>开网格（T.Kernel）→ 分配（T.alloc_*）→ 搬运（T.copy）→ 计算（T.gemm）→ 并行收尾（T.Parallel）→ 写回（T.copy）</strong>。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@T.prim_func</span><br><span class="line">def gemm(A, B, C):                      # 开网格</span><br><span class="line">    with T.Kernel(num_blocks, threads=256):</span><br><span class="line">        A_frag = T.alloc_fragment((BM, BN), T.float32)   # 分配：显式放置</span><br><span class="line">        for k in T.Pipelined(K, num_stages=3):          # 搬运 + 计算（流水重叠）</span><br><span class="line">            a = T.alloc_shared((BM, BK), T.bfloat16)</span><br><span class="line">            T.copy(A[:, k*BK], a)                        # 搬进共享内存</span><br><span class="line">            T.gemm(a, B_shared, A_frag)                  # 计算</span><br><span class="line">        T.copy(A_frag, C)                               # 写回</span><br></pre></td></tr></table></figure>
+<p>注意两点。第一，这段代码的「形状感」和 CUDA 内核一样——grid、block、threads、shared memory 都在——但<strong>没有一行地址算术</strong>：没有 threadIdx 索引、没有 bank 编号、没有 swizzle 公式。第二，代码里出现的 <code>T.alloc_fragment</code>（寄存器）、<code>T.alloc_shared</code>（共享内存）、<code>T.copy</code>（搬运）、<code>T.gemm</code>（计算）、<code>T.Pipelined</code>（流水）、<code>T.Parallel</code>（线程映射）就是第四章六个实例里反复出现的全部角色。</p>
+<h2 id="fen-gong"><a href="#fen-gong" class="headerlink" title="分工原则：你写数据流，编译器管调度"></a>分工原则：你写数据流，编译器管调度</h2>
+<p>第一章问「数据放哪、怎么搬」的决策权归谁，六个时代给了六个答案。TileLang 是第七种：<strong>把决策权一分为二</strong>——放置与搬运的语义（数据流）显式交给用户写，因为它就是性能的命门，藏不得；映射与优化（调度）交给编译器推理，因为它重复、机械、且随硬件变化。中间的 FTG 就是两者的交接界面：用户把节点（tile 算子）和注解交给系统，系统在图上做「推荐 + 推理」两阶段自动补全。注解写得越少编译器推得越多；想控制就多写注解——同一个管线，丰俭由人。</p>
+<h2 id="nei-cun-ceng-ji"><a href="#nei-cun-ceng-ji" class="headerlink" title="内存层级：T.alloc_* 就是放置决策的语法"></a>内存层级：T.alloc_* 就是放置决策的语法</h2>
+<p>Triton 已经把内存管理藏进编译器了，TileLang 为什么还让用户显式写 <code>T.alloc_shared</code>、<code>T.alloc_fragment</code>？答案：显式写放置不是退步，而是把 OpenCL 缺失的那块抽象补上了。同一组 <code>T.alloc_*</code> 原语，在 NVIDIA 上落到 Shared/寄存器，在昇腾上落到 L1/UB/L0A-L0C——<strong>语义相同、落点不同</strong>。用户写的是「这份数据要多快、被复用几次」的意图，编译器负责把它映射到具体硬件。Triton 的问题是连意图都不让你表达；TileLang 把意图变成一等公民的语法。</p>
+<h2 id="liu-shui"><a href="#liu-shui" class="headerlink" title="流水：一个 num_stages 参数背后"></a>流水：一个 num_stages 参数背后</h2>
+<p><code>T.Pipelined(..., num_stages=3)</code> 是 TileLang 里性价比最高的参数：用户只写一个数字，编译器自动分析依赖、把「搬数据」和「算数据」切成 stage、插入同步屏障、安排多级缓冲轮转。流水生效后，GEMM(0) 在算的时候 A(1)/B(1) 正在搬——搬运时间被藏进计算时间，GPU 气泡归零。<code>num_stages=3</code> 的含义是「最多 3 个迭代同时留在流水里」。在 CUDA 里这对应手工双缓冲/三缓冲，在昇腾里对应 TQue 的乒乓配置——都是最磨人的部分，这里收进了一个参数。</p>
+<h2 id="bian-yi-guan-xian"><a href="#bian-yi-guan-xian" class="headerlink" title="编译管线：五段路与三级用户"></a>编译管线：五段路与三级用户</h2>
+<p>一份 tile 程序走五段路：<strong>Python 源码 → TileLang AST → FTG → TIRX 优化 pass → 设备代码（CUDA/AscendC/PTO）</strong>。第二章的「推荐 + 推理」两阶段就发生在 FTG 到 TIRX 之间。管线底部是三级用户接口——Beginner/Developer/Expert 共用同一条管线，这正是「显式与自动可以并存」的工程证据。</p>
+
+<h1 id="di-si-zhang"><a href="#di-si-zhang" class="headerlink" title="第四章 · 对着 DeepInfer 源码学：六个真实实例"></a>第四章 · 对着 DeepInfer 源码学：六个真实实例</h1>
+<p>准备动作：克隆仓库，代码位于 <code>DeepInfer/deepinfer/model_executor/layers/tilelang_ops/</code>，该目录下 <code>cuda/</code> 与 <code>asc/</code> 两个子目录放同一批算子的 CUDA 版与昇腾版，<strong>成对对照读是学习双后端设计的最佳方式</strong>。</p>
+<h2 id="shi-li-1"><a href="#shi-li-1" class="headerlink" title="实例 1：SWA 索引展开——34 行的完整 TileLang 算子"></a>实例 1：SWA 索引展开——34 行的完整 TileLang 算子</h2>
+<p>V4.1-Flash 用滑动窗口注意力（SWA）。prefill 时每个 query 位置能「看到」的 KV 范围用一个 4 元组（两段区间的 offset/len）压缩表示。这个 kernel 把 4 元组展开成完整索引序列：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">@tilelang.jit(out_idx=None, target=&quot;cuda&quot;)</span><br><span class="line">def expand_swa_index_tl(width: int) -&gt; Any:</span><br><span class="line">    n = T.dynamic(&quot;n&quot;)</span><br><span class="line">    rows_per_tile = 4</span><br><span class="line">    cols_per_tile = min(1024, tilelang.math.next_power_of_2(width))</span><br><span class="line">    @T.prim_func</span><br><span class="line">    def _expand_swa_index(pivots: T.Tensor((n,4), T.int32), output: T.Tensor((n,width), T.int32)):</span><br><span class="line">        with T.Kernel(T.ceildiv(n, rows_per_tile), T.ceildiv(width, cols_per_tile), threads=128) as (bx, by):</span><br><span class="line">            T.pdl_sync()</span><br><span class="line">            for i, j in T.Parallel(rows_per_tile, cols_per_tile):</span><br><span class="line">                row, col = bx*rows_per_tile+i, by*cols_per_tile+j</span><br><span class="line">                if row &lt; n and col &lt; width:</span><br><span class="line">                    o1, l1, o2, l2 = pivots[row,0], pivots[row,1], pivots[row,2], pivots[row,3]</span><br><span class="line">                    output[row,col] = T.if_then_else(col &lt; l1, o1+col,</span><br><span class="line">                        T.if_then_else(col &lt; l1+l2, o2-l1+col, -1))</span><br><span class="line">    return _expand_swa_index</span><br></pre></td></tr></table></figure>
+<p>逐行读：<code>@tilelang.jit(out_idx=None, target="cuda")</code> 是 JIT 特化（width 是编译期常量，首次调用按传入值编译）；<code>T.dynamic("n")</code> 是运行时才知道的维度，���译器按 shape 特化但不展开 n；<code>T.Kernel(grid, threads=128) as (bx,by)</code> 声明 grid 和 block 内线程数，<strong>没有 threadIdx 索引——线程绑定是编译器的活</strong>；<code>T.Parallel</code> 让编译器把两层循环映射到 128 线程并自动向量化；<code>T.if_then_else</code> 是表达式版三元（CUDA 侧生成无分支 select）；<code>T.pdl_sync()</code> 是 DeepInfer 的 PDL（programmatic dependent launch）机制——同一 stream 相邻 kernel 间去掉同步开销。这个实例回答的问题：TileLang 算子长什么样？答案是：和 CUDA 有同样的「形状感」，但所有映射细节都被编译器接管。</p>
+<h2 id="shi-li-2"><a href="#shi-li-2" class="headerlink" title="实例 2：DSpark 的置信度头——GEMV 宏与「站在草稿肩膀上」"></a>实例 2：DSpark 的置信度头——GEMV 宏与「站在草稿肩膀上」</h2>
+<p>DSpark 投机解码里，模型一次并行生成多个草稿 token，每个能不能被主模型接受由置信度头（Confidence Head）预测。它本质是 GEMV 加 sigmoid。值得盯住的点：<strong><code>T.macro</code></strong> 内联宏，GEMV 写一次实例化两次（主隐状态 GEMV + 马尔可夫项 GEMV），编译器按各自 shape 特化——这正是「tile 是 IR 一等公民」的红利，宏在 IR 层展开而非 C 预处理器的文本替换；<strong><code>B0 = gcd(1024, n_embed)</code></strong> 分块宽度取 1024 与 n_embed 的最大公约数，保证 tile 整除且贴合硬件宽度——「手写 CUDA 的智慧，用一行 Python 表达」；<strong><code>T.Pipelined</code></strong> 让搬 weight/x 到寄存器（fragment）与乘累加自动重叠；<strong><code>T.get_thread_binding() == 0</code></strong> 只有 0 号线程执行收尾的 sigmoid——显式线程分工，编译器保证正确性；<strong><code>T.assume(hidden_stride % 8 == 0)</code></strong> 给编译器一个可证明的约束用于推导向量化。这个实例回答：TileLang 怎么表达「手写 CUDA 级别的细节」？答案是：宏、fragment 显式放置、流水注解、线程判断全都在，只是没有一行内存地址算术。</p>
+<h2 id="shi-li-3"><a href="#shi-li-3" class="headerlink" title="实例 3：置信度调度 kernel——调度本身也是 TileLang"></a>实例 3：置信度调度 kernel——调度本身也是 TileLang</h2>
+<p>异步调度下，CPU 在跑 schedule(N+1) 时，第 N 步的置信度还没回传 CPU，所以「每条序列该验证几个草稿 token」必须在 GPU 上就地完成。这个 kernel 是两阶段结构：Phase 1 每个 block 独立算自己序列的累积概率；Phase 2 是「全局 top-k」——每个位置都要知道自己在全体 <code>num_seqs × nextn</code> 候选里的排名，用 <code>T.alloc_reducer</code> 并行归约计数。知识点：<code>T.alloc_var</code> 是单个标量变量（寄存器），所有中间量都显式声明；<strong>tie-break 规则</strong>（同概率时索引小的赢）是确定性的，不是实现细节，是生产级系统「批次不变」的一部分；<strong>确定性红利</strong>——整个 kernel 无原子操作竞争，输出只依赖输入，这正是 DeepInfer 敢做确定性采样（同输入同参数同种子→同输出）的算子层基础。这个实例回答：TileLang 能写「调度逻辑」而不只是「矩阵乘」吗？答案是：能，而且 DeepSeek 把吞吐敏感的最热路径之一放在了这里。</p>
+<h2 id="shi-li-4"><a href="#shi-li-4" class="headerlink" title="实例 4：同一个算子的昇腾版——同一语义，硬件感知分块"></a>实例 4：同一个算子的昇腾版——同一语义，硬件感知分块</h2>
+<p>对照 CUDA 版读，差异全部来自硬件：<code>tile_kernels.get_num_vec_cores()</code> / <code>get_max_ub_per_vector_core()</code>——tile 大小不再写死，而是运行时查询硬件（昇腾有多少向量核、每核 UB 多大直接决定分块宽度和流水级数），这就是论文里「硬件感知默认值」在生产代码里的样子；<strong><code>T.Persistent</code></strong> 是昇腾的持久化执行模型——固定 block 网格循环吃工作 tile，而不是 GPU 那样一个 block 一份活，同一个「gather」语义执行模型完全不同；<code>T.SimdVF() + T.Parallel</code> 清空 buffer 走向量核 SIMD，逐行动态索引读取走 <code>T.serial + T.alloc_var</code>（GPU 上对应 warp 内 gather，昇腾上对应 MTE 的标量搬运）；<strong><code>T.annotate_buffer_versions</code></strong> 声明多级缓冲版本数，编译器据此做乒乓流水——昇腾上这正是 Ascend C 里最磨人的 TQue 配置，TileLang 把它收进一个注解。这个实例回答：TileLang 的「一套代码多后端」是营销话术吗？不是——准确说法是「一套语义、多套调度」：数据流部分跨平台一致，调度部分由编译器和硬件查询共同决定。</p>
+<h2 id="shi-li-5"><a href="#shi-li-5" class="headerlink" title="实例 5：EPLB——负载均衡可以优雅地不是 kernel"></a>实例 5：EPLB——负载均衡可以优雅地不是 kernel</h2>
+<p>MoE 模型几百个专家分布在不同卡上，热门专家把卡挤爆、冷门专家闲置。EPLB 的解法：允许物理专家比逻辑专家多（热门专家复制多份），再贪心地把物理专家排到各 rank。读这段代码的两个收获：术语定义写在 docstring 里——logical expert（模型定义的）与 physical expert（带冗余副本的），这是理解 MoE 推理的第一步，DeepSeek 的工程注释习惯值得学；<strong>负载均衡是纯 PyTorch 的贪心</strong>——不需要 fancy kernel，按 <code>DEEPINFER_EXPERT_REARRANGEMENT_STEP_INTERVAL</code> 周期性在 CPU 上重算放置方案再触发一次权重重排。系统设计的分层思想：算子层只负责「跑得快」，策略层负责「跑得聪明」，各用各的趁手工具。</p>
+<h2 id="shi-li-6"><a href="#shi-li-6" class="headerlink" title="实例 6：用 environ.py 把六个实例串成一张图"></a>实例 6：用 environ.py 把六个实例串成一张图</h2>
+<p>DeepInfer 把几乎所有特性都做成环境变量开关，每个开关的注释就是一段设计说明。完整调用链（对着代码可验证）：DFlash 草稿模型一次生成最多 5 个草稿 token（<code>USE_NEXTN_DECODE=5</code>）→ 置信度头（实例 2 的 kernel）给每个草稿位置打接受概率 → 异步调度（<code>ZERO_OVERHEAD_SCHEDULING</code>）下 CPU 不知道上一步置信度，置信度调度 kernel（实例 3）在 GPU 上就地决定每条序列验证几个位置 → SWA 索引展开（实例 1）为 YoCo 截断（mask/compact）后的窗口生成索引 → EPLB（实例 5）周期性重排专家 → 所有 TileLang 算子按 <code>DEEPINFER_ACCELERATOR=nvidia|ascend</code> 自动选 CUDA 或昇腾实现。</p>
+
+<h1 id="xie-zai-zui-hou"><a href="#xie-zai-zui-hou" class="headerlink" title="写在最后：怎么把这份源码变成你的知识"></a>写在最后：怎么把这份源码变成你的知识</h1>
+<ul>
+<li><strong>先读文档再读码</strong>：<code>DeepInfer/doc/inference_deployment_qa.md</code> 是官方工程 QA，把 DSpark、异步调度、结构化输出的机制用问答讲透了；README.md 全文必读。</li>
+<li><strong>成对读算子</strong>：<code>tilelang_ops/</code> 里每个算子的 <code>cuda/</code> 与 <code>asc/</code> 版本对着读，是最快的双后端学习法（实例 4 演示了这个方法）。</li>
+<li><strong>费曼自测</strong>：读完每个实例，合上代码回答三问——这个算子的数据流是什么？调度决策谁做的？换一块芯片要改什么？答不上来的地方就是下一轮要读的。</li>
+<li><strong>动手</strong>：TileLang 官方有 Puzzles 练习（tile-ai/tilelang-puzzles）和 50 行 GEMM 教程；写一个你工作里真实存在的 kernel，比读十篇文章都管用。</li>
+</ul>
+<p>训练决定模型有多聪明，推理决定它有多便宜——而算子语言，正在决定做这两件事的人是谁。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考资料"></a>参考资料</h1>
+<ul>
+<li>DeepInfer：<a href="https://github.com/deepseek-ai/DeepInfer">github.com/deepseek-ai/DeepInfer</a></li>
+<li>TileLang：<a href="https://github.com/tile-ai/tilelang">github.com/tile-ai/tilelang</a></li>
+<li>TileLang 论文 arXiv 版：<a href="https://arxiv.org/abs/2504.17577">arXiv:2504.17577</a></li>
+<li>TileLang ICLR 2026 Oral：<a href="https://iclr.cc/virtual/2026/oral/10010187">ICLR 2026 Oral</a></li>
+<li>TileLang 设计访谈（王磊，Meet AI Compiler）：<a href="https://cloud.kepuchina.cn/h5/detail?id=7347404277404307456">kepuchina.cn</a></li>
+</ul>
+{% endraw %}

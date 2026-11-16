@@ -1,16 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
-    <entry>
+  <entry>
+    <title>一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子</title>
+    <url>/tilelang.html</url>
+    <content><![CDATA[TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
+    <title>stable-diffusion.cpp：图像生成领域的纯 C/C++ 推理框架</title>
+    <url>/stable-diffusion-cpp.html</url>
+    <content><![CDATA[基于 GGML 的 C/C++ 扩散模型推理框架，类比 llama.cpp：多模型、多后端、内存优化与二次开发方向。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你</title>
     <url>/sglang-pro6000-load-test.html</url>
-    <content><![CDATA[阅读 nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。<span id="more"></span>]]></content>
+    <content><![CDATA[nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。<span id="more"></span>]]></content>
   </entry>
-    <entry>
+  <entry>
     <title>Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型</title>
     <url>/multi-harness-rl.html</url>
-    <content><![CDATA[阅读 Multi-Harness RL：同一模型换 harness 掉分比换模型还狠。FineEnvs 的 capture proxy 把 Claude Code/Codex/OpenCode/Mini-SWE-Agent 变成黑盒 RL 环境，2xH100 GRPO 配方与结果。<span id="more"></span>]]></content>
+    <content><![CDATA[同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。<span id="more"></span>]]></content>
   </entry>
-<entry>
+  <entry>
     <title>MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路</title>
     <url>/mig-dynamic-tp.html</url>
     <content><![CDATA[阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。<span id="more"></span>]]></content>
@@ -18,21 +28,16 @@
   <entry>
     <title>Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界</title>
     <url>/rl-diffusion-survey.html</url>
-    <content><![CDATA[RL 驱动的扩散模型系统综述：技术全景、四大领域、三大瓶颈。TPAMI 接收。<span id="more"></span>]]></content>
+    <content><![CDATA[梳理强化学习与扩散模型的结合：从语言、图像和视频，到机器人与科学建模。<span id="more"></span>]]></content>
   </entry>
   <entry>
     <title>LeapQuant：近乎无损的 8-bit 线性注意力递归态量化</title>
     <url>/leapquant.html</url>
-    <content><![CDATA[三个免训练技巧把线性注意力递归态量化到近乎无损的 8-bit。<span id="more"></span>]]></content>
+    <content><![CDATA[阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。<span id="more"></span>]]></content>
   </entry>
   <entry>
     <title>Databricks：如何让 Qwen 3.8 27B 微调快6倍</title>
     <url>/qwen-sft-6x.html</url>
-    <content><![CDATA[GPU 平均利用率已经 98%，训练却还能快 6 倍。Databricks 完整记录了排查过程、算子变化与数据打包细节。<span id="more"></span>]]></content>
+    <content><![CDATA[围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。<span id="more"></span>]]></content>
   </entry>
-  
-  
-  
-  
-  
 </search>

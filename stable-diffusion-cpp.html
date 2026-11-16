@@ -1,0 +1,85 @@
+---
+layout: "blog-post"
+post_id: "stable-diffusion-cpp"
+title: "stable-diffusion.cpp：图像生成领域的纯 C/C++ 推理框架"
+description: "基于 GGML 的 C/C++ 扩散模型推理框架，类比 llama.cpp：多模型、多后端、内存优化与二次开发方向。"
+---
+{% raw %}
+<p>做 AI 应用开发，很多人习惯了「训练用 Python、部署再想办法塞进 C++ 服务」的组合。但如果要在 C++ 工程里直接跑扩散模型，直接用 Python 生态意味着额外维护 Python 环境、模型依赖和独立服务进程，甚至要处理进程间通信。有没有方式直接在 C/C++ 工程里运行扩散模型？有——<strong>stable-diffusion.cpp</strong>。</p>
+<span id="more"></span>
+
+<h1 id="ta-shi-shen-me"><a href="#ta-shi-shen-me" class="headerlink" title="它到底是什么"></a>它到底是什么</h1>
+<p>stable-diffusion.cpp 是一个<strong>基于 GGML 的 C/C++ 扩散模型推理框架</strong>，思路跟 llama.cpp 一脉相承——llama.cpp 解决大语言模型的本地推理，它把同样的思路用到了图像生成。两者都用 C/C++ 实现、靠 GGML 提供底层计算能力。目标不是提供新模型，而是提供一套「加载模型 → 执行推理 → 生成图像」的底层实现，让图像生成能力直接集成进 C/C++ 应用，不必额外维护一套 Python 推理服务。</p>
+<p>几点特点：C/C++ 实现方便接入现有工程；基于 GGML 支持多种硬件后端；不局限于最初的 Stable Diffusion；支持 Safetensors、GGUF、PyTorch checkpoint 等多种权重格式。需要澄清的是：所谓「纯 C/C++」指推理实现用 C/C++，构建仍需编译器、CMake，启用 CUDA 仍需 CUDA Toolkit——它的价值在于把<strong>推理运行时</strong>放进 C/C++ 工程。</p>
+
+<h1 id="zhi-chi-de-mo-xing"><a href="#zhi-chi-de-mo-xing" class="headerlink" title="支持的模型早已不止 Stable Diffusion"></a>支持的模型早已不止 Stable Diffusion</h1>
+<p>按官方 README（截至 2026-11-08），模型支持分三类：</p>
+<ul>
+<li><strong>图像生成</strong>：Stable Diffusion 1.x/2.x、SDXL/SDXL-Turbo、SD3/SD3.5、FLUX.1/FLUX.2、FLUX.3 Image Klein、Qwen Image/2.1、Z-Image、MOSS-Image。</li>
+<li><strong>图像编辑</strong>：FLUX.1-Kontext、Qwen Image Edit 系列、LongCat Image Edit、Boogu Image Edit——根据输入图和文本指令修改已有图像。</li>
+<li><strong>视频生成</strong>：Wan2.1/2.2、LTX-2.3/2.5、HunyuanVideo 1.5、LingBot-Video、MiniMax-H3。</li>
+</ul>
+<p>但要特别注意：<strong>声明支持某模型 ≠ 任意权重都能直接加载</strong>。不同模型有不同的权重格式、文本编码器、VAE、Tokenizer 和配置要求，部分新模型可能还在刚加入阶段。实际使用时要对照 README 确认模型版本、权重文件和配套组件是否匹配。</p>
+
+<h1 id="jia-suan-hou-duan"><a href="#jia-suan-hou-duan" class="headerlink" title="底层计算：多种硬件后端"></a>底层计算：多种硬件后端</h1>
+<p>通过 GGML 后端支持不同计算设备：</p>
+<table><thead><tr><th>后端</th><th>主要用途</th></tr></thead><tbody><tr><td>CPU</td><td>使用处理器执行推理</td></tr><tr><td>CUDA</td><td>使用 NVIDIA GPU</td></tr><tr><td>Vulkan</td><td>通过 Vulkan 使用兼容 GPU</td></tr><tr><td>Metal</td><td>面向 Apple 平台</td></tr><tr><td>OpenCL</td><td>面向支持 OpenCL 的设备</td></tr><tr><td>SYCL</td><td>面向支持 SYCL 的计算平台</td></tr></tbody></table>
+<p>CMake 里还能看到 HIPBLAS、MUSA 等构建选项，具体可用性需结合工具链、GGML 后端和代码版本确认。统一的后端接口能减少上层业务代码与具体硬件的耦合——但不同后端的算子覆盖、性能、稳定性并不相同，能编译不等于所有模型都获得相同效果。</p>
+<p>项目把「计算后端」和「参数存储后端」拆成两个参数：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">--backend cuda0 --params-backend cpu    # CUDA 计算，参数放 CPU 内存</span><br><span class="line">--backend cuda0 --params-backend disk   # CUDA 计算，参数按需从磁盘加载</span><br></pre></td></tr></table></figure>
+<p><code>--backend</code> 决定模型计算实际在哪个设备执行；<code>--params-backend</code> 决定模型参数主要存放哪里。上面的配置就是「CUDA 计算，但参数主要放 CPU 内存，需要时再传到设备」，用 disk 则进一步降低显存占用（代价是磁盘读取开销）。</p>
+
+<h1 id="nei-cun-guan-li"><a href="#nei-cun-guan-li" class="headerlink" title="内存管理：扩散模型最吃资源"></a>内存管理：扩散模型最吃资源</h1>
+<p>SDXL、FLUX 这类模型，参数、文本编码器、扩散计算、VAE 解码都很占显存。项目提供了几种手段：</p>
+<ul>
+<li><strong>GGUF 量化</strong>：降低参数存储开销，让模型更容易部署到资源有限设备。但量化不是越低越好，不同模型/量化方式对质量和速度的影响不同。</li>
+<li><strong>CPU-GPU 混合部署</strong>：即上面的 backend/params-backend 分离，给显存有限的设备更多调节空间。</li>
+<li><strong>VAE Tiling</strong>：把高分辨率图像的解码拆成小块，降低峰值显存。</li>
+<li><strong>Flash Attention</strong>：优化部分注意力计算，改善内存使用和计算效率。</li>
+</ul>
+<p>这些功能不等于所有模型都能在低配设备上流畅跑，但至少说明项目考虑的不只是「能不能跑」，还有「怎么控制推理中的资源占用」。</p>
+
+<h1 id="bian-yi-yun-xing"><a href="#bian-yi-yun-xing" class="headerlink" title="实际怎么编译和运行"></a>实际怎么编译和运行</h1>
+<p>项目提供命令行程序 <code>sd-cli</code>。Linux 环境示例（注意 <code>--recursive</code> 是因为依赖 GGML 等子模块）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git clone --recursive https://github.com/leejet/stable-diffusion.cpp.git</span><br><span class="line">cd stable-diffusion.cpp</span><br><span class="line">git rev-parse HEAD   # 记录 commit，方便回溯</span><br></pre></td></tr></table></figure>
+<h2 id="bian-yi-cpu"><a href="#bian-yi-cpu" class="headerlink" title="编译 CPU 版本"></a>编译 CPU 版本</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cmake -S . -B build -DCMAKE_BUILD_TYPE=Release</span><br><span class="line">cmake --build build -j</span><br></pre></td></tr></table></figure>
+<h2 id="bian-yi-cuda"><a href="#bian-yi-cuda" class="headerlink" title="编译 CUDA 版本"></a>编译 CUDA 版本</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cmake -S . -B build-cuda -DCMAKE_BUILD_TYPE=Release -DSD_CUDA=ON</span><br><span class="line">cmake --build build-cuda -j</span><br></pre></td></tr></table></figure>
+<h2 id="sheng-cheng-tu-xiang"><a href="#sheng-cheng-tu-xiang" class="headerlink" title="准备模型并生成图像"></a>准备模型并生成图像</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">./build/bin/sd-cli -m ./models/v1-5-pruned-emaonly.safetensors -p &quot;a lovely cat&quot;</span><br><span class="line">./build-cuda/bin/sd-cli -m ./models/v1-5-pruned-emaonly.safetensors -p &quot;a lovely cat&quot; --backend cuda0</span><br></pre></td></tr></table></figure>
+<p><code>-m</code> 指定模型、<code>-p</code> 正向提示词、<code>--backend</code> 推理后端。可执行文件通常在构建目录的 <code>bin</code> 下。SD 不同版本的模型可能需要额外的文本编码器、VAE 等组件，上例是 README 的基础示例。项目明确说明 API 和 CLI 参数可能频繁变化，正式使用前看最新 README 和构建文档。</p>
+
+<h1 id="er-ci-kai-fa"><a href="#er-ci-kai-fa" class="headerlink" title="二次开发方向"></a>二次开发方向</h1>
+<ul>
+<li><strong>封装成 C++ 推理 SDK</strong>：官方提供了命令行和 C/C++ 接口，实际项目通常希望把底层推理封装成统一接口（模型加载/卸载、参数配置、生成接口、异常与资源释放、多模型管理），业务代码就不用关心底层是 SD、FLUX 还是别的模型。注意这是示意，真正集成要基于项目当前提供的 C API 和上下文生命周期。</li>
+<li><strong>HTTP 推理服务</strong>：在推理能力上加 HTTP Server（如 <code>POST /api/image/generate</code>），支持文生图/图生图/编辑、任务 ID 与异步队列、状态查询、任务取消与超时。关键工程细节：图像生成不是快请求，直接同步执行会阻塞请求线程，应把 HTTP 接口和推理任务解耦，用队列调度 GPU 资源。还要考虑推理上下文能否并发、GPU 调度、队列限流、任务取消时释放资源——不能给推理函数加个多线程调用就认为有并发能力。面向外部还要鉴权、限流、内容安全、日志审计。</li>
+<li><strong>模型管理与动态切换</strong>：多模型注册、版本管理、按任务选模型、预加载/按需加载、切换时释放资源。多模型同时驻留会带较大内存/显存压力，可能要单模型驻留、按需切换或模型池策略。</li>
+<li><strong>性能与资源调度优化</strong>：特定 GPU 算子优化、CPU-GPU 数据传输、参数存储策略、VAE 解码优化、按显存动态调参、按分辨率/模型调优。部署到 Jetson 等边缘设备还可研究量化、显存控制和功耗管理。</li>
+<li><strong>与现有视觉算法组合</strong>：把目标检测、图像检索和图像生成组合（检测→规则判断→选生成模型→生成/编辑→输出）。如工业视觉生成缺陷示意图、智能零售生成场景展示图、内容制作自动出图、数据增强补训练图像。但生成图像不能直接当真实检测结果，尤其工业视觉还需人工审核或规则校验。</li>
+</ul>
+
+<h1 id="yi-yi"><a href="#yi-yi" class="headerlink" title="对 C++ 和边缘 AI 开发的意义"></a>对 C++ 和边缘 AI 开发的意义</h1>
+<ul>
+<li><strong>让现有 C++ 应用拥有图像生成能力</strong>：原本只提供检测/分类/检索的 C++ 服务，现在可以在原工程里加图像生成模块，少一层独立 Python 服务依赖。是否直接集成还是封装成独立进程，要看服务架构、并发量和资源隔离要求。</li>
+<li><strong>为边缘设备提供另一种部署选择</strong>：Jetson 等平台通常要同时考虑内存、显存、功耗、启动时间和软件依赖，通过 CUDA 等后端有机会把图像生成放到本地设备。但「支持 CUDA」不等于「已适配 Jetson」，要检查 CUDA、编译环境、模型支持、实际内存/显存占用。</li>
+<li><strong>跨平台推理工程参考</strong>：它如何用 GGML 统一不同硬件的计算接口，对维护多硬件平台的 C++ 推理项目有参考价值——上层业务减少对具体硬件的依赖，底层用不同后端做适配。换后端不能解决所有兼容性问题，但至少能减少重复开发。</li>
+</ul>
+
+<h1 id="xu-ke-zheng-ming"><a href="#xu-ke-zheng-ming" class="headerlink" title="许可证和实际使用注意"></a>许可证和实际使用注意</h1>
+<p>stable-diffusion.cpp 本身采用 <strong>MIT License</strong>，允许使用、修改、再分发，但分发时要保留版权声明和许可证文本。<strong>项目许可证和模型许可证是两回事</strong>：即使框架是 MIT，也不代表它运行的所有模型都能不受限制商用。不同版本的 SD、FLUX、Qwen Image 各有自己的模型许可协议，要单独确认是否允许商用、是否对用户规模/收入/场景有限制、是否要求保留声明、是否限制生成内容用途、是否允许权重再分发。接入实际业务还要考虑输入图和生成内容的版权、隐私与内容安全。</p>
+
+<h1 id="xing-neng"><a href="#xing-neng" class="headerlink" title="性能要实测"></a>性能要实测</h1>
+<p>CPU/CUDA/Vulkan 后端、量化、VAE Tiling、Flash Attention 存在，不等于所有设备都能拿到理想性能。本文介绍能力和工程扩展方向，未在统一硬件/模型/参数下做性能对比，因此不提供未经验证的生成耗时或显存数据。准备在自己设备上部署时，建议至少记录：</p>
+<table><thead><tr><th>测试项目</th><th>建议记录内容</th></tr></thead><tbody><tr><td>模型</td><td>模型名称、权重格式、量化方式</td></tr><tr><td>输入参数</td><td>图像分辨率、采样步数、Batch Size</td></tr><tr><td>硬件后端</td><td>CPU、CUDA、Vulkan 等</td></tr><tr><td>内存占用</td><td>系统 RAM 峰值</td></tr><tr><td>显存占用</td><td>GPU VRAM 峰值</td></tr><tr><td>推理耗时</td><td>模型加载时间、单张生成时间</td></tr><tr><td>输出质量</td><td>是否存在明显伪影、细节损失等</td></tr><tr><td>稳定性</td><td>连续运行、并发请求和异常恢复情况</td></tr></tbody></table>
+<p>尤其边缘设备，别只看单张能不能生成，还要关注连续运行时的内存变化、温度、功耗和速度是否稳定。把这些数据测出来，才能判断它是否适合自己的业务。</p>
+
+<h1 id="shou-wei"><a href="#shou-wei" class="headerlink" title="最后聊几句"></a>最后聊几句</h1>
+<p>过去几年 llama.cpp 让不少人看到了在本地用 C/C++ 跑大语言模型的可能。现在 stable-diffusion.cpp 把同样的思路带到了扩散模型领域：支持的模型已从传统 SD 扩展到 FLUX、Qwen Image、Z-Image 和部分视频模型，底层提供了多种计算后端和内存优化。更重要的是，它不只是一个能跑模型的命令行工具——C++ 开发者可以围绕它继续做 SDK 封装、HTTP 服务、模型管理、硬件适配和业务集成，把图像生成真正纳入现有工程体系。当然它不能替代 Python 图像生成生态，复杂的工作流、训练和实验 Python 仍有很大优势。但如果你的目标是把图像生成集成进现有 C/C++ 应用，或在不同硬件上探索本地扩散推理，这个项目值得研究。对 C++ 开发者来说，AI 应用的能力边界，可能又要往外扩一圈了。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>项目：<a href="https://github.com/leejet/stable-diffusion.cpp">github.com/leejet/stable-diffusion.cpp</a></li>
+<li>原文整理自 GitHub 仓库截至 2026-11-08 的 README、构建文档和相关说明</li>
+</ul>
+{% endraw %}

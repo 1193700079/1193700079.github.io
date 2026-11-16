@@ -12,8 +12,7 @@
       "tag": "llm",
       "tag_url": "/tags/llm/",
       "tags": [
-        "llm",
-        "inference"
+        "llm"
       ],
       "summary": "阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。",
       "minutes": 15,
@@ -234,11 +233,6 @@
     {
       "name": "diffusion",
       "url": "/tags/diffusion/",
-      "count": 1
-    },
-    {
-      "name": "inference",
-      "url": "/tags/inference/",
       "count": 1
     }
   ]

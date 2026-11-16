@@ -1,0 +1,57 @@
+---
+layout: "blog-post"
+post_id: "mig-dynamic-tp"
+title: "MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路"
+description: "阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。"
+---
+{% raw %}
+<p>推理部署里常见的诉求：「人多的时候 8 张大模型一起扛，人少的时候能不能把 8 卡逻辑切成 2 块小卡，跑两个小模型省点电？」这个弹性能力，现在有两条技术路线——<strong>MIG 硬件切卡</strong>和<strong>动态 TP（运行时改 tp-size）</strong>。一个在硬件层，一个在推理引擎层。这篇把两条路讲清楚，以及为什么它们在 RTX PRO 6000 这类工作站卡上都走不通。</p>
+<span id="more"></span>
+
+<h1 id="wei-shen-me"><a href="#wei-shen-me" class="headerlink" title="为什么 tp-size 不能运行时改"></a>为什么 tp-size 不能运行时改</h1>
+<p>张量并行（TP）把一层权重按列/行切到多张卡上，每次前向/反向都要做 all-reduce 通信。vLLM 和 SGLang 的 tp-size 都是<strong>启动时固定的</strong>，原因是它绑死了一堆运行时状态：</p>
+<ul>
+<li><strong>NCCL 通信组</strong>：进程组、拓扑、通信 buffer 在 init 时一次性建好，tp-size 变了整个通信拓扑要拆了重建。</li>
+<li><strong>权重切分布局</strong>：每层权重按 tp 数分片存在各卡显存里，改 tp-size 意味着全部权重重新切分、跨卡搬运。</li>
+<li><strong>KV cache 布局</strong>：attention 的 KV 也按 tp 分片，迁移成本高。</li>
+<li><strong>CUDA graph 捕获</strong>：vLLM/SGLang 对固定 shape 的解码步捕获了 CUDA graph，tp-size 变了 graph 全部作废要重捕获。</li>
+</ul>
+<p>所以现状是：改 tp-size = 重启服务。FlexTP、DMT 这类研究工作的目标正是打破这一点——运行时重组 TP 组，不停机换分片粒度。它们的难点在于<strong>重配置的代价</strong>：权重重切 + 通信组重建 + KV 迁移 + barrier 同步，这套开销只有在负载波动大到一定程度、且持续足够久时才划算。所以动态 TP 还停留在研究阶段，生产里没人用。</p>
+
+<h1 id="mig-shi-shen-me"><a href="#mig-shi-shen-me" class="headerlink" title="MIG 是什么"></a>MIG 是什么</h1>
+<p>MIG（Multi-Instance GPU）是 NVIDIA 的<strong>硬件级</strong> GPU 切分技术：把一张 A100/H100/B200 在硅片层面切成最多 7 个完全隔离的实例，每个实例有自己独立的显存、计算资源、IOMMU 隔离和独立的 PCIe 通道，互不干扰——不是软件时间片，是真的硬件切分。</p>
+<p>A100 80GB 的切分 profile：</p>
+<table><thead><tr><th>实例类型</th><th>数量</th><th>显存</th><th>算力</th></tr></thead><tbody><tr><td>1g.10gb</td><td>7</td><td>10 GB</td><td>~1/7</td></tr><tr><td>2g.20gb</td><td>3</td><td>20 GB</td><td>~2/7</td></tr><tr><td>3g.40gb</td><td>2</td><td>40 GB</td><td>~3/7</td></tr><tr><td>7g.80gb</td><td>1</td><td>80 GB</td><td>全卡</td></tr></tbody></table>
+<p>切分用 <code>nvidia-smi mig</code> 命令完成：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">nvidia-smi mig -cgi 1,1,1,1,1,1,1   # A100 80GB：切成 7 个 1g.10gb 实例</span><br><span class="line">nvidia-smi mig -i 0 -gmig 1,1,1,1,1,1,1  # 再为每个实例创建 7 个 GI</span><br><span class="line"># 之后每个 GI 像一张独立的&#x27;小卡&#x27;，各自跑一个 vLLM/SGLang 服务</span><br></pre></td></tr></table></figure>
+<p>切好之后每个实例就是一张独立的「小卡」，可以各自跑一个 vLLM/SGLang 服务、各装一个模型，显存和算力物理隔离，互相不会抢占。这是多租户推理（一张卡服务多个业务/多个客户）的标准方案，vLLM/SGLang 都原生支持把服务起在某个 MIG 实例上。</p>
+
+<h1 id="wei-shen-me-bu-zhi-chi"><a href="#wei-shen-me-bu-zhi-chi" class="headerlink" title="为什么 RTX PRO 6000 不支持"></a>为什么 RTX PRO 6000 不支持</h1>
+<p>因为 MIG 是<strong>数据中心卡硅片里专门的分区硬件</strong>——独立的显存控制器分区、独立的 IOMMU、独立的计算分区。这套东西只存在于 A100/H100/B200 这些 datacenter 芯片里。RTX PRO 6000 是工作站系（Blackwell 工作站卡），硅片里没有 MIG 分区硬件，所以没法「人少时把 8 卡逻辑切成 2 块小卡」。</p>
+<p>工作站卡不是完全没有多进程共享的手段，只是隔离级别低得多：</p>
+<ul>
+<li><strong>MPS（Multi-Process Service）</strong>：多个 CUDA 进程真正并发跑在同一张卡上，共享显存和计算，没有隔离——一个进程 OOM 会拖垮全部。这是工作站卡多服务最常见的方案。</li>
+<li><strong>Time-slicing</strong>：CUDA 时间片轮转，多个进程轮流独占 GPU，隔离是时间上的不是空间上的。</li>
+<li><strong>vGPU</strong>：走 hypervisor + vGPU 软件切分，有隔离，但需要虚拟化环境和 license，是给虚拟机用的，不是给裸机多租户用的。</li>
+</ul>
+
+<h1 id="dui-bi"><a href="#dui-bi" class="headerlink" title="两条路对比"></a>两条路对比</h1>
+<table><thead><tr><th>维度</th><th>MIG 切卡</th><th>动态 TP（运行时改 tp-size）</th><th>MPS / time-slicing</th></tr></thead><tbody><tr><td>隔离性</td><td>硬件级：显存/算力/IOMMU 全隔离</td><td>无隔离概念，TP 组内本来就共享</td><td>无隔离，进程间共享显存与调度</td></tr><tr><td>切分单位</td><td>固定的 GPU 实例（profile 预定义）</td><td>张量并行的分片粒度，随 tp-size 变</td><td>按时间片或并发调度</td></tr><tr><td>能否运行时重组</td><td>不能，改 profile 要销毁实例（≈重启）</td><td>研究阶段的目标：不停机重组</td><td>随时可增删进程</td></tr><tr><td>支持卡型</td><td>仅数据中心卡：A100/H100/B200</td><td>与卡型无关，是推理引擎层的能力</td><td>几乎所有消费/工作站卡</td></tr><tr><td>生产成熟度</td><td>生产可用，vLLM/SGLang 原生支持</td><td>研究阶段（FlexTP/DMT 等），生产没有</td><td>生产可用，最普遍</td></tr></tbody></table>
+
+<h1 id="shen-yi-yi"><a href="#shen-yi-yi" class="headerlink" title="落到 RTX PRO 6000 上怎么搞弹性"></a>落到 RTX PRO 6000 上怎么搞弹性</h1>
+<p>既然 MIG 和动态 TP 都走不通，8 张 RTX PRO 6000 要做容量弹性，实际可行的手段是<strong>换模型/换服务粒度</strong>，而不是换 tp-size：</p>
+<ul>
+<li><strong>小模型小 tp</strong>：人少时把 8 卡服务停掉，起两个 2 卡（tp=2）的小模型服务。重启有代价，但这是目前唯一可靠的「切卡」方式。</li>
+<li><strong>MPS 多进程</strong>：一张卡上同时跑多个小服务（如 embedding + 小 LLM），用 MPS 让它们并发，省卡但牺牲隔离。</li>
+<li><strong>接受重启成本</strong>：动态 TP 真正落地之前，「重启换配置」就是生产现实。把重启做成一个自动化动作（停旧服务→起新服务→健康检查→切流量），比追求运行时改 tp-size 更务实。</li>
+</ul>
+<p>一句话总结：<strong>MIG 解决「空间上切分」但只限数据中心卡；动态 TP 解决「时间上重组」但还在论文里；工作站卡两者皆无，弹性只能靠换模型粒度 + 自动化重启。</strong></p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>NVIDIA MIG 文档：NVIDIA Multi-Instance GPU</li>
+<li>vLLM MIG 支持：vLLM docs（MIG）</li>
+<li>SGLang 部署文档：SGLang docs（tensor parallel）</li>
+<li>动态 TP 研究：FlexTP、DMT 等论文</li>
+</ul>
+{% endraw %}

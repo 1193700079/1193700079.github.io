@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路</title>
+    <url>/mig-dynamic-tp.html</url>
+    <content><![CDATA[阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界</title>
     <url>/rl-diffusion-survey.html</url>
     <content><![CDATA[RL 驱动的扩散模型系统综述：技术全景、四大领域、三大瓶颈。TPAMI 接收。<span id="more"></span>]]></content>

@@ -1,0 +1,40 @@
+---
+layout: blog
+---
+{% assign posts = site.data.blog.posts %}
+{% if page.category %}{% assign posts = posts | where: 'category', page.category %}{% endif %}
+{% if page.tag %}{% assign posts = posts | where_exp: 'post', 'post.tags contains page.tag' %}{% endif %}
+{% if page.year %}{% assign posts = posts | where: 'year', page.year %}{% endif %}
+{% if page.month %}{% assign posts = posts | where: 'month', page.month %}{% endif %}
+<section class="blog-intro" aria-labelledby="page-title">
+  <div><p class="eyebrow">NOTES & PRACTICE <span class="eyebrow-line"></span></p>
+  <h1 id="page-title">{{ page.heading | default: '技术笔记' | escape }}<span class="title-dot">.</span></h1>
+  <p class="intro-description">{{ page.description | escape }}</p></div>
+  <div class="intro-index"><span>{% if posts.size < 10 %}0{% endif %}{{ posts | size }}</span><p>篇笔记 <span aria-hidden="true">/</span> 持续积累</p></div>
+</section>
+<div class="blog-grid">
+  <section class="posts-column" aria-label="文章列表" data-post-list>
+    {% if page.view == 'categories' or page.view == 'tags' %}
+    <div class="directory-links" aria-label="{% if page.view == 'tags' %}标签{% else %}分类{% endif %}目录">
+      {% if page.view == 'tags' %}{% assign groups = site.data.blog.tags %}{% else %}{% assign groups = site.data.blog.categories %}{% endif %}
+      {% for group in groups %}<a href="{{ group.url | relative_url }}">{{ group.name | escape }} <span>{{ group.count }}</span></a>{% endfor %}
+    </div>
+    {% endif %}
+    {% if page.view == 'archive' %}
+    <div class="directory-links" aria-label="按年份浏览"><a href="{{ '/archives/' | relative_url }}">全部年份</a>{% assign years = site.data.blog.posts | group_by: 'year' %}{% for year in years %}<a href="{{ '/archives/' | append: year.name | append: '/' | relative_url }}">{{ year.name }} <span>{{ year.items | size }}</span></a>{% endfor %}</div>
+    {% endif %}
+    {% if page.category or page.tag %}<a class="back-link" href="{{ '/blog/' | relative_url }}">← 返回全部笔记</a>{% endif %}
+    <div class="list-tools">
+      <label class="search-box" for="post-search"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><span class="sr-only">搜索文章标题、摘要或标签</span><input type="search" id="post-search" placeholder="搜索标题、摘要或标签…" autocomplete="off"><kbd aria-hidden="true">/</kbd></label>
+      {% unless page.category or page.tag %}
+      <div class="filter-list" aria-label="按专题筛选"><button type="button" class="filter-button is-active" aria-pressed="true" data-filter="all">全部笔记 <span>{{ posts | size }}</span></button>{% for category in site.data.blog.categories %}<button type="button" class="filter-button" aria-pressed="false" data-filter="{{ category.name | escape }}">{{ category.name | escape }}</button>{% endfor %}</div>
+      {% endunless %}
+    </div>
+    <div class="list-caption"><span>{% if page.view == 'archive' %}按时间 · 由新到旧{% else %}文章{% endif %}</span><span data-result-count aria-live="polite">共 {{ posts | size }} 篇</span></div>
+    <div class="post-list">{% for post in posts %}{% include blog-card.html %}{% endfor %}</div>
+    <div class="search-empty" hidden><p>没有找到匹配的笔记</p><span>试试其他关键词，或查看全部文章。</span><button type="button" data-reset-search>清除筛选</button></div>
+    <p class="list-end" data-list-end>以上是全部 {{ posts | size }} 篇笔记。<span>继续学习，继续记录。</span></p>
+    <noscript><p>搜索和筛选需要 JavaScript；你仍可阅读全部文章，或使用右侧分类链接。</p></noscript>
+  </section>
+  {% include blog-sidebar.html %}
+</div>

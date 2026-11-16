@@ -12,11 +12,9 @@ SITE_HOST = "1193700079.github.io"
 BODY_START = "<!-- article-body:start -->"
 BODY_END = "<!-- article-body:end -->"
 POST_PATHS = {
-    "/css-study-01.html",
-    "/mysql-linux.html",
-    "/fetch-springboot-oss指南.html",
-    "/算法接入平台.html",
-    "/my-first-article.html",
+    "/rl-diffusion-survey.html",
+    "/leapquant.html",
+    "/qwen-sft-6x.html",
 }
 REMOVED_ROUTES = {"about", "friends"}
 
@@ -97,7 +95,7 @@ def main():
     source = Path(__file__).resolve().parents[1]
     required = [
         "index.html", "cv/index.html", "blog/index.html", "404.html", "photos/index.html",
-        "archives/index.html", "archives/2021/index.html", "archives/2021/12/index.html",
+        "archives/index.html", "archives/2026/index.html", "archives/2026/11/index.html",
         "categories/index.html", "tags/index.html", "assets/profile/profile.css",
         "assets/profile/profile.js", "assets/css/main.css", "assets/profile/portrait.jpg",
         "baidusitemap.xml", "sitemap.xml", "search.xml", "atom.xml",
@@ -126,7 +124,7 @@ def main():
     for post, path in zip(posts, post_paths):
         assert post["month"] == post["date"][:7] and post["year"] == post["month"][:4], f"Article archive date mismatch: {post['url']}"
         if path in POST_PATHS:
-            assert post["month"] == "2021-12", f"Legacy article archive changed: {post['url']}"
+            assert post["month"] == "2026-11", f"Article archive changed: {post['url']}"
         tags = post["tags"]
         assert isinstance(tags, list) and tags and all(isinstance(tag, str) for tag in tags), f"Invalid article tags: {post['url']}"
         assert len(tags) == len(set(tags)), f"Duplicate article tags: {post['url']}"

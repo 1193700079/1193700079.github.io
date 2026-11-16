@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
+    <title>LeapQuant：近乎无损的 8-bit 线性注意力递归态量化</title>
+    <link href="https://1193700079.github.io/leapquant.html"/>
+    <id>https://1193700079.github.io/leapquant.html</id>
+    <published>2026-11-16T09:00:00.000Z</published>
+    <updated>2026-11-16T09:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;三个免训练技巧把线性注意力递归态量化到近乎无损的 8-bit。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>Databricks：如何让 Qwen 3.8 27B 微调快6倍</title>
     <link href="https://1193700079.github.io/qwen-sft-6x.html"/>
     <id>https://1193700079.github.io/qwen-sft-6x.html</id>

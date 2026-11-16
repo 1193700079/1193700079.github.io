@@ -1,0 +1,17 @@
+<aside class="blog-sidebar" aria-label="作者与专题">
+  <div class="sidebar-author">
+    <img src="{{ '/assets/profile/portrait.jpg' | relative_url }}" alt="杨瑞卿" width="56" height="70">
+    <div><p class="author-name">杨瑞卿 <span>Cypher</span></p><p class="author-role">大模型算法工程师</p></div>
+  </div>
+  <p class="author-note">记录开发中的问题、解法，<br>以及持续学习的过程。</p>
+  <a class="text-link" href="{{ '/' | relative_url }}">更多关于我的工作 <span aria-hidden="true">↗</span></a>
+  <div class="sidebar-group">
+    <div class="sidebar-heading"><h2>按专题阅读</h2><span>{{ site.data.blog.categories | size }}</span></div>
+    <ul class="topic-list">{% for category in site.data.blog.categories %}<li><a href="{{ category.url | relative_url }}"><span>{{ category.name | escape }}</span><span class="topic-count">{{ category.count | prepend: '0' }}</span></a></li>{% endfor %}</ul>
+  </div>
+  <div class="sidebar-group">
+    <div class="sidebar-heading"><h2>标签</h2><a href="{{ '/tags/' | relative_url }}" aria-label="查看所有标签">↗</a></div>
+    <div class="tag-cloud">{% for tag in site.data.blog.tags %}<a href="{{ tag.url | relative_url }}">{{ tag.name | escape }}</a>{% endfor %}</div>
+  </div>
+  <div class="sidebar-footnote"><span class="small-rule"></span><p>写下来，<br>让下一次更清楚。</p><a href="{{ '/archives/' | relative_url }}">浏览文章归档 <span aria-hidden="true">→</span></a></div>
+</aside>

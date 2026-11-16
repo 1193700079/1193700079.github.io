@@ -1,0 +1,34 @@
+---
+layout: blog
+---
+{% assign post = site.data.blog.posts | where: 'id', page.post_id | first %}
+<a class="back-link article-back" href="{{ '/blog/' | relative_url }}">← 返回技术笔记</a>
+<header class="article-heading">
+  <a class="eyebrow article-category" href="{{ post.category_url | relative_url }}">{{ post.category | escape }} <span class="eyebrow-line"></span></a>
+  <h1>{{ post.title | escape }}</h1>
+  <div class="article-meta"><span>杨瑞卿 <span class="meta-dot">/</span> Cypher</span><time datetime="{{ post.date }}">{{ post.date | date: '%Y 年 %m 月 %d 日' }}</time><span>{{ post.minutes }} 分钟阅读</span></div>
+</header>
+<div class="reading-grid">
+  <article class="article-main" aria-label="文章正文">
+    <div class="article-entry" id="article-content"><!-- article-body:start -->{{ content }}<!-- article-body:end --></div>
+    <footer class="article-end">
+      <a class="post-tag" href="{{ post.tag_url | relative_url }}"># {{ post.tag | escape }}</a>
+      <button class="copy-link" type="button" data-copy-link>复制文章链接 <span aria-hidden="true">↗</span></button>
+      <p>本文由杨瑞卿撰写，转载请注明作者与出处。</p>
+    </footer>
+    <nav class="post-pagination" aria-label="相邻文章">
+      {% for entry in site.data.blog.posts %}{% if entry.id == post.id %}
+        {% unless forloop.first %}{% assign previous_index = forloop.index0 | minus: 1 %}{% assign previous = site.data.blog.posts[previous_index] %}<a href="{{ previous.url | relative_url }}"><span>← 上一篇</span><strong>{{ previous.title | escape }}</strong></a>{% endunless %}
+        {% unless forloop.last %}{% assign next_index = forloop.index0 | plus: 1 %}{% assign next = site.data.blog.posts[next_index] %}<a class="next-post" href="{{ next.url | relative_url }}"><span>下一篇 →</span><strong>{{ next.title | escape }}</strong></a>{% endunless %}
+      {% endif %}{% endfor %}
+    </nav>
+  </article>
+  <aside class="reading-sidebar" aria-label="阅读辅助">
+    <div class="reading-sidebar-inner">
+      {% if post.toc.size > 0 %}
+      <details class="article-toc" open><summary>本文目录 <span aria-hidden="true">⌄</span></summary><nav aria-label="文章目录"><ol>{% for item in post.toc %}<li class="toc-level-{{ item.level }}"><a href="#{{ item.id | escape }}">{{ item.title | escape }}</a></li>{% endfor %}</ol></nav></details>
+      {% else %}<div class="reading-note"><p>一则简短的技术笔记</p><span>实践中的命令与参考。</span></div>{% endif %}
+      <div class="reading-actions"><a href="{{ '/blog/' | relative_url }}">浏览全部笔记 <span aria-hidden="true">→</span></a><a href="#main-content">返回顶部 <span aria-hidden="true">↑</span></a></div>
+    </div>
+  </aside>
+</div>

@@ -1,0 +1,76 @@
+---
+layout: "blog-post"
+post_id: "multi-harness-rl"
+title: "Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型"
+description: "同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。"
+---
+{% raw %}
+<p>同一个模型，在不同 agent harness 里的得分差异，可能比换模型还大。Hugging Face FineEnvs 团队（Lewis Tunstall、Leandro von Werra 等）的长文 <em>The ultimate guide to multi-harness RL</em> 把这件事讲透了：agentic RL 训久了，模型学会的不是「怎么解题」，而是「怎么在这个 harness 的接口习惯下解题」。他们的解法是让 harness 以为自己连的是模型服务，把 rollout 全程录进 GRPO 训练。这篇把技术路线和训练配方拆开读。</p>
+<span id="more"></span>
+
+<h1 id="wei-shen-me-harness-ying-xiang-da-da"><a href="#wei-shen-me-harness-ying-xiang-da-da" class="headerlink" title="为什么 harness 影响这么大"></a>为什么 harness 影响这么大</h1>
+<p>先把术语钉死：harness 是模型和任务之间那层软件——它构造模型看到的上下文、中转工具调用、校验输出、决定何时重试或停止。对训练者来说，harness 是别人写的、改不动的程序。同一个政策（policy，即被训的模型权重），在不同 harness 里表现完全不同：</p>
+<ul>
+<li><strong>换 harness 比换模型影响大</strong>。zhang2026stopcomparing 在 100 道 SWE-bench Verified 任务上，固定任务对比 GLM-5.1 / GPT-5.4 / Kimi K2.6 三个模型 × 三档 harness 配置（Minimal 繁冗工具无压缩无重试 → Improved 加压缩重试 → Full 再加自检与回滚）：换 harness 让 GLM-5.1 移动 13 分，而同一 harness 里换模型只动 2.5–5 分。</li>
+<li><strong>模型卡都开始标注 harness 来源</strong>。Kimi K2 的 Terminal-Bench 报了两个数：Terminus 下 25.0，自家框架下 30.0。GLM-4.7 的模型卡直接写「在 Claude Code、Cline 等主流 agent 框架下有显著提升」。</li>
+<li><strong>同一权重，榜单 vs 实战差 10 个点</strong>。Claude Opus 4.5 在 Scale 的 SEAL 榜单 SWE-bench Pro 上 45.9%，在 Claude Code 里 55.4%。</li>
+</ul>
+<p>Orchard 论文把这种迁移代价量化得很刺眼：OpenSWE-32B 从 OpenHands 挪到 Mini-SWE-Agent 掉 7.5 分，挪到 Kimi-CLI 直接掉 58.8 分，SWE-bench Verified 只剩 3.6%，Terminal-Bench 2.0 是 0。而 Orchard 自己用多 harness 轨迹微调 + Mini-SWE-Agent 里 RL 的模型，在三个 harness 下稳定在 45.0–64.3。KwaiKAT 把病因说得直白：「模型学到的不是怎么解题，而是怎么在那个 harness 的接口约定下解题。」过拟合分三种：对<strong>动作格式</strong>（工具名、参数名，换个 harness 直接拒调）、对<strong>上下文结构</strong>（压缩方式不同）、对<strong>控制流</strong>（依赖原 harness 的重试与停止条件）。所以 Poolside 的 Laguna 报告里，训练数据刻意混入 OpenHands、OpenCode、Mini-SWE-Agent 的轨迹——头部实验室已经在「harness 缩放」了。</p>
+
+<h1 id="bai-hei-xiang-shui-zhu-ai"><a href="#bai-hei-xiang-shui-zhu-ai" class="headerlink" title="白盒与黑盒：谁拥有 rollout"></a>白盒与黑盒：谁拥有 rollout</h1>
+<p>关键分野是<strong>谁驱动 rollout 循环</strong>：</p>
+<ul>
+<li><strong>白盒环境</strong>：训练者拥有循环。采样动作 → 调 env.step() → 读观测 → 再采样，每个 token 都已经在训练者手里。TRL 的 GRPOTrainer 期待的就是这种接口。</li>
+<li><strong>黑盒环境</strong>：harness 拥有循环。它在沙箱里跑自己的循环、调自己的工具、压自己的上下文、自己决定何时停。训练者在盒子外面，能看到的只有打到模型 endpoint 上的一串 LLM 请求-响应对。</li>
+</ul>
+<p>Agent Lightning 的定义：「传统 agentic RL 里训练引擎拥有环境交互循环；harnessed agentic RL 里 harness 拥有循环，训练引擎只观察一串请求-响应对。」四个主流 harness（Claude Code、Codex、OpenCode、Mini-SWE-Agent）全是黑盒。但有一个接口保证存在于 harness 之外——<strong>模型 API 本身</strong>。harness 内部千差万别（OpenAI chat、OpenAI Responses、Anthropic Messages、Google Gemini 四种方言，是否用 tool calling、怎么压上下文、控制流让给模型多少），可它总要调模型。这个唯一接口就是训练者能站的地方，整篇长文的架构就是围绕它搭的。注意别和 KAT-Coder 报告里另一套白盒/黑盒用法混淆：那边说的是上下文压缩策略（Mini-SWE-Agent 无压缩所以白盒，Claude Code 等压缩重组所以黑盒），和「谁拥有循环」是两条独立的轴。</p>
+
+<h1 id="san-kua-jia-gou"><a href="#san-kua-jia-gou" class="headerlink" title="三块架构：OpenEnv、Harbor 与 TRL"></a>三块架构：OpenEnv、Harbor 与 TRL</h1>
+<p>框架分三块，各管一段：</p>
+<table><thead><tr><th>组件</th><th>角色</th><th>要点</th></tr></thead><tbody>
+<tr><td>OpenEnv</td><td>标准 RL 环境接口 + capture proxy</td><td>Gymnasium 式 reset/step/state，typed action/observation，打包成 Docker。capture proxy 是核心机关</td></tr>
+<tr><td>Harbor</td><td>任务 + 沙箱</td><td>容器化任务集，每个 rollout 一个 E2B/Daytona 沙箱，harness 和沙箱按 rollout 选</td></tr>
+<tr><td>TRL Async GRPO</td><td>训练引擎</td><td>生成与训练异步解耦：一张 H100 训，另一张用 vLLM 服务策略并持续产出 rollout，训练不等最慢的 agent</td></tr>
+</tbody></table>
+<p><strong>capture proxy 的机关</strong>：harness 找 proxy 的方式和找任何模型供应商一样——base URL + API key，只不过这个 key 是按 rollout 签发的 capture session id，这样一个 proxy 一个端口就能服务所有并发 rollout，拿着没注册过的 key 来调用直接 401。proxy 靠路径、header、body 形状识别请求属于哪种方言，再用从 NVIDIA Polar gateway 移植的 converter 统一转成 chat completions，答完再按调用方自己的格式回放。训练者要的是每个采样 token 的 token id 和 logprob，proxy 向引擎要这些，外加全分布采样。</p>
+<p>两个工程细节值得抄：</p>
+<ul>
+<li><strong>不做流式</strong>。proxy 对引擎的调用从不 stream：等完整 completion 存下来，再回放给 harness 当 stream。比晚一点吐出第一个 token 多花不了什么，省掉了 partial delta 解析的全部麻烦。</li>
+<li><strong>logprob 必须 top_p=1.0</strong>。截断分布（top_p/top_k）会把策略自己会采的 token 偏走，这是 RL 里已知的熵塌缩路径；而且 vLLM 的 processed_logprobs 在截断之后才算，logprob 对不上策略。他们的实测：top_p 调到 1.0，importance ratio 从 0.985–0.993 提到 0.9984–0.9999。vLLM 侧要两个 flag：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vllm serve &lt;model&gt; --return-tokens-as-token-ids --logprobs-mode processed_logprobs</span><br></pre></td></tr></table></figure>
+<p>安装有个版本坑：typed TrainingTrace 要 OpenEnv 0.7.0+，harbor extra 必须 Python 3.12——3.10/3.11 上 openenv[harbor] 根本不装 Harbor 依赖。harbor_env 包在仓库 envs/ 目录里，不在 wheel 里：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git clone --depth 1 --branch main https://github.com/openenv/OpenEnv.git</span><br><span class="line">python -m pip install -e &#x27;./OpenEnv[harbor]&#x27;</span><br><span class="line">export PYTHONPATH=&quot;$PWD/OpenEnv/envs${PYTHONPATH:+:$PYTHONPATH}&quot;</span><br></pre></td></tr></table></figure>
+<p>异步的代价要清楚：rollout 来自的权重通常落后 2 个优化步，最多落后 4 步。</p>
+
+<h1 id="xun-lian-yu-jie-guo"><a href="#xun-lian-yu-jie-guo" class="headerlink" title="训练配方与结果"></a>训练配方与结果</h1>
+<p>正式跑的是 Liquid AI 的 LFM2.5-2.6B（早期 Qwen3.5-2B 的实验用来定配方）。任务用 SmolDataEnvs——从真实 Kaggle notebook 做的一套数据分析任务：1000 个训练任务（400 medium + 600 hard，固定顺序），250 个无重叠测试任务。对照两个 run：只在 OpenCode 里训，和四 harness 混训（OpenCode / Claude Code / Codex / Mini-SWE-Agent，每个 GRPO 8-rollout 组用其中一个）。</p>
+<p><strong>reward 设计是这篇里最实用的部分</strong>：正确性（对 1 错 0）+ 工具效率加成（最多 0.1，答对且调用更少才有）。Qwen 早期 run 只给正确性 reward，结果 rollout 的工具调用从 13 次爬到 41 次——模型没有任何理由在答对后停止探索。0.1 的加成看着小，但 GRPO 学的是组内对比：8 个 rollout 全对时，正确性完全无法区分它们，效率加成是唯一信号。审计数据：OpenCode-only 组 17.5%（97/555）、多 harness 组 22.6%（155/686）里，所有可计分 rollout 全对但工具数不同——全靠加成提供 reward 对比。</p>
+<p>硬件与时长：每 run 2×H100（一张训、一张 vLLM 服务）+ 每 rollout 一个 1 CPU / 4 GB 的 E2B 沙箱。OpenCode-only 训 32 小时，多 harness 训 46 小时（不含评估、排队与重启）。</p>
+<p>结果：</p>
+<table><thead><tr><th>指标</th><th>OpenCode-only</th><th>多 harness 混训</th></tr></thead><tbody>
+<tr><td>测试集 pass@1（总）</td><td>52.3%</td><td>54.2%</td></tr>
+<tr><td>OpenCode 下</td><td>58%</td><td>50%</td></tr>
+<tr><td>Claude Code 下</td><td>42%</td><td>49%</td></tr>
+<tr><td>Codex 下</td><td>43%</td><td>54%</td></tr>
+</tbody></table>
+<p>训练前的基线就暴露了问题：同一份 LFM 权重，Mini-SWE-Agent 下解 62%，Claude Code 下只有 33%。训练后两个 run 都涨 10–12 个点，大部分增益在前 200 步。结论很清晰：<strong>多 harness 混训用自家长 harness 下 8 个点的代价，换来了跨 harness 的泛化</strong>；OpenCode-only 模型学到的「少调工具」只部分迁移到了 Codex。另外工具调用曲线在训练集和测试集上方向相反——训练时多 harness run 调用更多（因为 Claude Code/Codex 本来就比 OpenCode 话多），测试集上两个模型在所有 harness 下调用都比训练前少。</p>
+<p>评估方法也值得抄：每个 cell 只跑一次，相邻 checkpoint 差 1–2 个点就是噪声，要信跨 checkpoint 的趋势，不要信单点。</p>
+
+<h1 id="dui-xcoder-de-yi-yi"><a href="#dui-xcoder-de-yi-yi" class="headerlink" title="对 xcoder 的启示"></a>对 xcoder 的启示</h1>
+<p>这条路能不能用在自己的 xcoder 上，卡点一句话：<strong>RL 要动权重，checkpoint 必须在你手里</strong>。</p>
+<ul>
+<li><strong>xcoder 是闭源部署/网关路由</strong>（模型 ID 形如推理服务路由而非自持 checkpoint）：做不了 RL，唯一路径是把各 harness 下的真实轨迹采回来做 SFT/蒸馏——Orchard 和 Poolside 都是这么混的。这条路和已有的 SFT 打包批次经验直接衔接，不用碰权重。</li>
+<li><strong>有可编辑权重</strong>（或训一个 2–7B 开源小模型当执行端）：照 FineEnvs 的 <code>05-multi-harness-rl/train/multi_harness.py</code> 配方直接抄——vLLM 两个 flag、OpenEnv proxy 夹在 harness 与 vLLM 之间、TRL Async GRPO、双卡 H100、单 run 30–50 小时。reward 用「正确性 + 效率加成」，别只给正确性。评估按四 harness 全跑、看趋势不看单点。</li>
+</ul>
+<p>对闭源主模型还有一个副产品：harness 混训的价值不止在泛化分数，capture proxy 顺手记录的 token id + logprob 全轨迹，本身就是一套现成的多 harness 轨迹采集器——即使最终不做 RL，这套录下来的数据也够 SFT 蒸馏用了。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>长文：https://huggingface.co/spaces/FineEnvs/multi-harness-rl</li>
+<li>可复现训练代码：https://github.com/adithya-s-k/FineEnvs （05-multi-harness-rl/，含 REPRODUCE.md）</li>
+<li>OpenEnv：https://github.com/openenv/OpenEnv</li>
+<li>TRL Async GRPO + Harbor 示例：https://github.com/huggingface/trl/tree/main/examples/async_grpo_harbor</li>
+<li>任务集 SmolDataEnvs：HF collection FineEnvs/smoldataenvs</li>
+</ul>
+{% endraw %}

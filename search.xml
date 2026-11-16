@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
-  <entry>
+    <entry>
+    <title>Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型</title>
+    <url>/multi-harness-rl.html</url>
+    <content><![CDATA[阅读 Multi-Harness RL：同一模型换 harness 掉分比换模型还狠。FineEnvs 的 capture proxy 把 Claude Code/Codex/OpenCode/Mini-SWE-Agent 变成黑盒 RL 环境，2xH100 GRPO 配方与结果。<span id="more"></span>]]></content>
+  </entry>
+<entry>
     <title>MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路</title>
     <url>/mig-dynamic-tp.html</url>
     <content><![CDATA[阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。<span id="more"></span>]]></content>

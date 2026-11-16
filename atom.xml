@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <entry>
+    <entry>
+    <title>Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型</title>
+    <link href="https://1193700079.github.io/multi-harness-rl.html"/>
+    <id>https://1193700079.github.io/multi-harness-rl.html</id>
+    <published>2026-11-16T12:00:00.000Z</published>
+    <updated>2026-11-16T12:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;阅读 Multi-Harness RL：同一模型换 harness 掉分比换模型还狠。FineEnvs 的 capture proxy 把 Claude Code/Codex/OpenCode/Mini-SWE-Agent 变成黑盒 RL 环境，2xH100 GRPO 配方与结果。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+<entry>
     <title>MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路</title>
     <link href="https://1193700079.github.io/mig-dynamic-tp.html"/>
     <id>https://1193700079.github.io/mig-dynamic-tp.html</id>

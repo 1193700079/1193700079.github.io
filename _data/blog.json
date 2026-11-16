@@ -1,6 +1,57 @@
 {
   "posts": [
     {
+      "id": "mig-dynamic-tp",
+      "url": "/mig-dynamic-tp.html",
+      "title": "MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路",
+      "date": "2026-11-16T11:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/技术阅读/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm",
+        "inference"
+      ],
+      "summary": "阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。",
+      "minutes": 15,
+      "toc": [
+        {
+          "id": "wei-shen-me",
+          "title": "为什么 tp-size 不能运行时改",
+          "level": 1
+        },
+        {
+          "id": "mig-shi-shen-me",
+          "title": "MIG 是什么",
+          "level": 1
+        },
+        {
+          "id": "wei-shen-me-bu-zhi-chi",
+          "title": "为什么 RTX PRO 6000 不支持",
+          "level": 1
+        },
+        {
+          "id": "dui-bi",
+          "title": "两条路对比",
+          "level": 1
+        },
+        {
+          "id": "shen-yi-yi",
+          "title": "落到 RTX PRO 6000 上怎么搞弹性",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "9a5ac914ed048691d040710eed4bb9f363ac008664cfe65e1906b3f7384ed540"
+    },
+    {
       "id": "rl-diffusion-survey",
       "url": "/rl-diffusion-survey.html",
       "title": "Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界",
@@ -171,18 +222,23 @@
     {
       "name": "技术阅读",
       "url": "/categories/技术阅读/",
-      "count": 3
+      "count": 4
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 3
+      "count": 4
     },
     {
       "name": "diffusion",
       "url": "/tags/diffusion/",
+      "count": 1
+    },
+    {
+      "name": "inference",
+      "url": "/tags/inference/",
       "count": 1
     }
   ]

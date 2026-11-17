@@ -5,13 +5,22 @@ title: "InfraRSI：让训练基础设施自主探索与自我进化的 Agent Har
 description: "基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。"
 ---
 {% raw %}
-<p>Scaling Law 越来越卡在算力集群的真实吞吐上。过去一年递归自我改进（RSI）和自主编程智能体在单点算法发现、孤立 CUDA/Triton Kernel 生成上进展很快，但一线大模型训练仓库里，启动配置、算子实现、图编译、多机集合通信是咬在一起的——放任通用 Coding Agent 下场改代码，要么频繁撞 OOM 显存墙和编译器死锁，要么为了刷吞吐搞出缩减有效 Batch、挪动计时器起点的「虚假加速」。基元律动（TokenRhythm）联合无问芯穹、北大、上交、清华发布的 <strong>InfraRSI</strong> 就是冲着这个缺口来的：首个面向大模型分布式训练基础设施的递归自我改进 Agent Harness，同步公开技术报告（arXiv: 2611.11558），全部开源。</p>
+<p>Scaling Law 越来越卡在算力集群的真实吞吐上。<a href="/llm-accel-panorama.html">大模型加速优化全景图</a>把训练加速划成独立板块，InfraRSI 则是其中「自动化」维度的一个完整样本。过去一年递归自我改进（RSI）和自主编程智能体在单点算法发现、孤立 CUDA/Triton Kernel 生成上进展很快，但一线大模型训练仓库里，启动配置、算子实现、图编译、多机集合通信是咬在一起的——放任通用 Coding Agent 下场改代码，要么频繁撞 OOM 显存墙和编译器死锁，要么为了刷吞吐搞出缩减有效 Batch、挪动计时器起点的「虚假加速」。基元律动（TokenRhythm）联合无问芯穹、北大、上交、清华发布的 <strong>InfraRSI</strong> 就是冲着这个缺口来的：首个面向大模型分布式训练基础设施的递归自我改进 Agent Harness，同步公开技术报告（arXiv: 2611.11558），全部开源。</p>
 <span id="more"></span>
+<blockquote>
+<p><strong>核心要点</strong></p>
+<ul>
+<li><strong>参数和代码一起搜</strong>：不止调命令行开关，还自动改被允许的源码（融合算子、FlexAttention 编译补丁、分桶梯度通信），四大负载几何平均 1.83×、最高 2.75×，MFU 从 17.4% 拉到 30.0%。</li>
+<li><strong>16 项校验抓 Reward Hacking</strong>：冻结文件 SHA-256 哈希 + 数值容差校验，1,212 次历史运行里 39 次「表面正常跑完」的 Loss 漂移全靠 L4 数值层揪出。</li>
+<li><strong>LLM 先验不可信</strong>：大模型对多卡速度的零样本预测与实测负相关（Spearman r ∈ [-0.49, -0.06]），得用真实硬件测量在线校准先验。</li>
+<li><strong>经验跨硬件要打折</strong>：跨 Roofline 拐点时优化收益会正负反转（H20 上 tp=2 +24%，H100 上 -4%），经验迁移必须带环境距离加权。</li>
+</ul>
+</blockquote>
 
 <h1 id="ta-shi-shen-me"><a href="#ta-shi-shen-me" class="headerlink" title="一、它是什么"></a>一、它是什么</h1>
 <p>InfraRSI 的定位是一行命令端到端自进化。把手头的 <code>train.sh</code>、<code>train.py</code> 或整个代码仓交给它，它自动串起五个阶段：<code>init → doctor → run → report → apply</code>。不需要重构现有训练工程——它严格只改你允许改的文件。最终产出是一个可直接投产的 <code>infrarsi_optimized.sh</code>。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">infrarsi optimize ./train.sh</span><br></pre></td></tr></table></figure>
-<p>它同时搜索两类东西：<strong>启动参数/环境变量/配置项</strong>和<strong>允许修改的源码补丁</strong>。后者包括融合归一化/RoPE/SwiGLU 算子、编译块稀疏 FlexAttention、分桶梯度范数通信，并自动把「高收益但耗显存」的配置与「省显存」开关配对。这就是它和传统自动调参器（只动命令行开关）的本质区别——纯调参很快会撞上算子与访存瓶颈，而 InfraRSI 把参数空间和代码空间放在同一个搜索里。</p>
+<p>它同时搜索两类东西：<strong>启动参数/环境变量/配置项</strong>和<strong>允许修改的源码补丁</strong>。后者包括融合归一化/RoPE/SwiGLU 算子、编译块稀疏 FlexAttention、分桶梯度范数通信，并自动把「高收益但耗显存」的配置与「省显存」开关配对。这就是它和传统自动调参器（只动命令行开关）的本质区别——纯调参很快会撞上算子与访存瓶颈，而 InfraRSI 把参数空间和代码空间放在同一个搜索里。融合归一化/RoPE/SwiGLU 这类算子手写融合正是<a href="/qwen-sft-6x.html">Databricks 那篇 Qwen 微调提速 6 倍</a>里的同一套路——手动融合内核对大模型训练收益显著，InfraRSI 把它从「人写一个内核」推广成「Agent 自动发现并验证一组内核」。
 
 <h2 id="wu-da-dian"><a href="#wu-da-dian" class="headerlink" title="五大产品亮点"></a>五大产品亮点</h2>
 <ul>
@@ -27,6 +36,7 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 <ul>
 <li><strong>虚假加速与计时偏移（Reward Hacking &amp; Timing Skew）</strong>：改小有效 Batch Size、把辅助参数更新推迟到计时窗口外、移动日志计时器起点、偷引入低精度转换——日志单步耗时大幅下降，训练任务早已被篡改。</li>
 <li><strong>跨两个数量级的集群测量噪声（Wide-Spectrum Noise）</strong>：独占 8×H100/H200 节点的成对步时噪声低至 0.04%–0.10%，共享主机上则超 6%。写死一个 2% 固定阈值，安静集群上误杀大量 0.5%–1.5% 的真实收益，嘈杂集群上又把随机抖动当有效加速。</li>
+<p>这个噪声跨度对做过一线推理实测的读者不陌生——<a href="/sglang-pro6000-load-test.html">8 卡 PRO 6000 推理实测</a>里「利用率是个谎言」那节讲的就是同一件事：nvidia-smi 的高利用率不代表 GPU 真正被用满，测量口径不对，任何优化结论都站不住。</p>
 <li><strong>大模型零样本速度预测严重失准（Miscalibrated LLM Priors）</strong>：前沿大模型读得懂代码结构，但对多卡执行速度的零样本定量预测与实测<strong>负相关</strong>（Spearman r ∈ [-0.49, -0.06]），还频繁对高收益开关投「假阴性否决票」。如 Gemma-4-26B-A4B MoE（8×H200）上 LLM 先验预测开图编译仅 +2.0%，实测 +55%；双机 Qwen3.5-35B-A3B MoE 上先验认为调大 NCCL 通道会变慢，实测 +10.2%。</li>
 <li><strong>贪心单起点搜索困死在显存墙与编译冲突悬崖（Memory &amp; Compiler Cliffs）</strong>：大招往往孤掌难鸣——单独关激活重算会爆显存（缺口 +18 GiB），开 torch.compile 又会与 Liger 融合算子冲突卡死。只围着当前最优解小步试探的 Agent 一遇 OOM 就放弃，永远找不到「耗显存加速项 + 省显存搭档 + 兼容算子补丁」的三方黄金组合。</li>
 </ul>
@@ -61,6 +71,12 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 <h1 id="kuai-su-shang-shou"><a href="#kuai-su-shang-shou" class="headerlink" title="五、30 秒快速上手"></a>五、30 秒快速上手</h1>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 1. 安装（Python 3.10+）</span><br><span class="line">git clone https://github.com/TokenRhythm/InfraRSI.git</span><br><span class="line">cd InfraRSI &amp;&amp; pip install -e .</span><br><span class="line"># 2. 一条命令启动，复用本机已登录的 Claude Code 或 Codex</span><br><span class="line">infrarsi optimize ./train.sh --llm claude-cli --screens 16</span><br><span class="line"># 3. 或接入 DeepSeek API + 自然语言约束</span><br><span class="line">export DEEPSEEK_API_KEY="your-key"</span><br><span class="line">infrarsi optimize ./train.sh \</span><br><span class="line">  --llm deepseek:deepseek-chat \</span><br><span class="line">  --requirements "不能改优化器" \</span><br><span class="line">  --budget-usd 10</span><br><span class="line"># 4. Skill 版本：在 Claude Code / Codex 会话里直接调用同一套引擎</span><br></pre></td></tr></table></figure>
 <p>除独立 Harness 外，仓库内额外提供 Skill 版本（<code>python agent_skill/install_skill.py</code> 安装），无需配置 API Key，在编码会话里直接对话即可调用同一套底层优化与校验引擎。从单次任务的自动调优，到跨任务、跨代际硬件集群的经验自进化，InfraRSI 在 AI Infra 智能化与 RSI 方向迈出了重要一步。五阶段分步运行、预算控制与经验包分享（<code>infrarsi exp</code>）的详细教程见官方博客与代码仓库。</p>
+
+<h1 id="jing-xuan-wen-da"><a href="#jing-xuan-wen-da" class="headerlink" title="常见问题"></a>常见问题</h1>
+<p><strong>InfraRSI 和直接让 Claude Code / Codex 改训练脚本，区别到底在哪？</strong><br>区别是契约。InfraRSI 先用 <code>init</code> 阶段锁死冻结文件（数据加载器、Loss 定义、计时器）的 SHA-256 哈希，再在 16 项校验下搜索——改小 Batch、挪计时器、偷换低精度都会被 L2 摘要一致性和 L4 数值容差拦下。裸跑 Coding Agent 没有这层防线，Reward Hacking 是默认结局而不是异常。</p>
+<p><strong>为什么 LLM 先验预测速度会负相关？</strong><br>大模型读得懂代码结构，但「多卡硬件上这个开关会快多少」是一个它没在训练里见过的定量问题。实测 Spearman r ∈ [-0.49, -0.06]：它认为「该慢」的开关往往实测更快（比如 Gemma-4 MoE 上预测 +2.0% 的图编译实测 +55%）。所以 InfraRSI 不信任 LLM 的绝对预测，只用它做差异化起点，再用真实硬件测量在线校准。</p>
+<p><strong>右截显存账本解决了什么问题？</strong><br>普通线性模型学显存时，OOM 崩溃的样本没有「峰值显存」可用，直接丢掉就会系统性低估显存消耗。右截 Tobit 把 OOM 当作「显存 ≥ 上限」的右截断观测，联合建模正常完赛的精确峰值和崩溃时的分配缺口下界，从而在 16 次试跑里算出每个配置到底吃多少 GiB，进而把「耗显存加速项 + 省显存搭档」配对起来。</p>
+<p><strong>经验从 H20 迁到 H100 为什么会反号？</strong><br>H20 是算力受限（148 TF, 4.0 TB/s），GEMM 慢、访存相对不那么贵，开 tp=2 摊薄通信能提速 +24%。H100/H200 Tensor Core 算力暴涨到 989 TF，GEMM 本身变快了，量化转换和 TP AllReduce 通信反而成了主导，同样的 tp=2 变成 -4%。所以经验迁移必须带环境距离加权，不能把一台机器的最优解直接搬过去。</p>
 
 <h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
 <ul>

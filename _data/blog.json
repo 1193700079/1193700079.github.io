@@ -6,7 +6,7 @@
       "title": "Drex：走向基础决策模型——不生成文字，直接读出概率分布",
       "date": "2026-11-17T11:00:00.000Z",
       "summary": "Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。",
-      "minutes": 13,
+      "minutes": 16,
       "category": "技术阅读",
       "category_url": "/categories/技术阅读/",
       "tag": "llm",
@@ -14,7 +14,7 @@
       "tags": [
         "llm"
       ],
-      "body_sha256": "73f16360bb6fee108b92fdf47bbb2c2e92f08f04da908c0f002721211a084b90",
+      "body_sha256": "ff54cb5bbce2306e847e1963fad9f28a42ce99be9f7ac3cfc262d5fceae9df1c",
       "year": "2026",
       "month": "2026-11",
       "toc": [
@@ -79,6 +79,11 @@
           "level": 1
         },
         {
+          "id": "jing-xuan-wen-da",
+          "title": "常见问题",
+          "level": 1
+        },
+        {
           "id": "can-kao-lian-jie",
           "title": "参考链接",
           "level": 1
@@ -91,7 +96,7 @@
       "title": "InfraRSI：让训练基础设施自主探索与自我进化的 Agent Harness",
       "date": "2026-11-17T10:00:00.000Z",
       "summary": "基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。",
-      "minutes": 12,
+      "minutes": 15,
       "category": "技术阅读",
       "category_url": "/categories/技术阅读/",
       "tag": "llm",
@@ -99,7 +104,7 @@
       "tags": [
         "llm"
       ],
-      "body_sha256": "598df12bab0889e2ea796f43fd58f1e9c812bc5ed2cfc9b8ecba4a16fa7d8a83",
+      "body_sha256": "1b5b7980edd8f1b1ea088d4147b25b51b00e984b85b4100b1785de48ff1bafd7",
       "year": "2026",
       "month": "2026-11",
       "toc": [
@@ -146,6 +151,11 @@
         {
           "id": "kuai-su-shang-shou",
           "title": "五、30 秒快速上手",
+          "level": 1
+        },
+        {
+          "id": "jing-xuan-wen-da",
+          "title": "常见问题",
           "level": 1
         },
         {

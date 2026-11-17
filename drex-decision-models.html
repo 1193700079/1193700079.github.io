@@ -5,8 +5,17 @@ title: "Drex：走向基础决策模型——不生成文字，直接读出概�
 description: "Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。"
 ---
 {% raw %}
-<p>LLM 的自回归范式正在生产环境里露出疲态：答案不稳定、要解析输出文本、成本和延迟都压在关键路径上。Nace.AI（Nischay Dhankhar、Alisher Amantay、Zhanibek Datbayev）这篇技术报告给出了另一条路——<strong>决策模型</strong>（decision model）：给定一个状态和一组用户提供的选项，模型不做任何自回归解码，直接返回这组选项上的概率分布。最大型号 Drex Max 在真实数据决策上与前沿模型打平，单请求中位延迟 183ms，而 GPT-6 Sol 约 2 秒、Claude Opus 5.5 约 3.5 秒。四个模型全部开源。</p>
+<p>LLM 的自回归范式正在生产环境里露出疲态：答案不稳定、要解析输出文本、成本和延迟都压在关键路径上。Nace.AI（Nischay Dhankhar、Alisher Amantay、Zhanibek Datbayev）这篇技术报告给出了另一条路——<strong>决策模型</strong>（decision model）：给定一个状态和一组用户提供的选项，模型不做任何自回归解码，直接返回这组选项上的概率分布。最大型号 Drex Max 在真实数据决策上与前沿模型打平，单请求中位延迟 183ms，而 GPT-6 Sol 约 2 秒、Claude Opus 5.5 约 3.5 秒。四个模型全部开源。<a href="/llm-accel-panorama.html">大模型加速优化全景图</a>里梳理了训练加速与推理加速的八大板块，决策模型是这条线上「输出形态」维度的一个极端样本。</p>
 <span id="more"></span>
+<blockquote>
+<p><strong>核心要点</strong></p>
+<ul>
+<li><strong>不生成、不解码</strong>：决策模型对用户在请求里给定的选项集直接返回概率分布，绕开自回归解码，单请求中位延迟 183ms，约为 GPT-6 Sol 的 1/11、Claude Opus 5.5 的 1/19。</li>
+<li><strong>四种基座、一个接口</strong>：8B 扩散 LM、9B DeltaNet 混合、35B-A3B MoE、27B 稠密多模态——前三者用指针头共享缓存，Max 用双向注意力加读出头换更高精度。</li>
+<li><strong>RLAF 比 GRPO 更适合校准敏感任务</strong>：用恰当评分规则做奖励加 KL 正则到 SFT 策略，把准确率与校准同时激励，消融里 Decision Index +2.0 分、ECE 降 0.9 个百分点。</li>
+<li><strong>顺序鲁棒性是损失项不是事后测量</strong>：置换一致性项把选项翻转率从 6.3% 压到 4.2%，准确率几乎不变。</li>
+</ul>
+</blockquote>
 
 <h1 id="shen-me-shi-jue-ce-mo-xing"><a href="#shen-me-shi-jue-ce-mo-xing" class="headerlink" title="一、什么是决策模型"></a>一、什么是决策模型</h1>
 <p>把输入映射到固定集合的任务，历来有三种做法：编码器模型在最后层挂一个分类头；T5 把标签当字符串生成；解码器模型靠 prompt 让它吐出标签。这三种方案的共同点是<strong>输出形状在部署前就固定了</strong>——分类头在训练时定死标签，重排器每个候选返回一个数，嵌入模型每个输入返回一个向量。</p>
@@ -20,12 +29,13 @@ description: "Nace.AI 开源了四个决策模型：用户给定选项集，模�
 
 <h1 id="chuang-xin-dian"><a href="#chuang-xin-dian" class="headerlink" title="二、创新点"></a>二、创新点</h1>
 <h2 id="zhi-zhen-jia-gou"><a href="#zhi-zhen-jia-gou" class="headerlink" title="指针架构：上下文编码一次，所有问题共享"></a>指针架构：上下文编码一次，所有问题共享</h2>
-<p>请求被打包成一条 token 序列：状态段 S 之后接每个问题一个 question block（指令、选项、一个 <code>&lt;decide&gt;</code> 收尾 token，每个选项用 <code>&lt;opt&gt;...</code></opt> 标签围住）。注意力掩码是 block-causal：问题块内的 token 能看状态的全部 token 和自身块内前序 token，但<strong>看不到其它问题块</strong>。于是 p_k 只依赖状态和问题 k，与同请求里其它问题怎么排、怎么增删无关，状态编码还能缓存复用。</p>
+<p>请求被打包成一条 token 序列：状态段 S 之后接每个问题一个 question block（指令、选项、一个 <code>&lt;decide&gt;</code> 收尾 token，每个选项用 <code>&lt;opt&gt;...&lt;/opt&gt;</code> 标签围住）。注意力掩码是 block-causal：问题块内的 token 能看状态的全部 token 和自身块内前序 token，但<strong>看不到其它问题块</strong>。于是 p_k 只依赖状态和问题 k，与同请求里其它问题怎么排、怎么增删无关，状态编码还能缓存复用。</p>
 <p>指针头本身极小：取 <code>&lt;decide&gt;</code> 处的隐状态经 W_q 得到查询 q，取每个 <code>&lt;/opt&gt;</code> 处的隐状态经 W_k 得到键 k_j，打分是缩放点积 z_{k,j} = k_j^T q / √d_p，softmax 之后就是该问题的选项分布。d_p = 256，v1.5（d=4096）整个指针头只有 210 万参数，v2.0（d=2048）只有 100 万，不到基座的 0.03%。三个选项的问题和 150 个选项的问题用同一个头，训练时没见过的选项也走同一套打分机制。推理时<strong>不需要任何解码</strong>。</p>
+<p>v1.5 与 v2.0 的基座是 Gated DeltaNet 混合模型——线性注意力与全局注意力层交错。线性注意力把上下文压成固定大小的递归状态，省显存但状态更新是推理瓶颈，<a href="/leapquant.html">递归态量化（LeapQuant）</a>那条线上的工作正好和它互补。</p>
 
 <h2 id="rlaf"><a href="#rlaf" class="headerlink" title="RLAF：用恰当评分规则做奖励"></a>RLAF：用恰当评分规则做奖励</h2>
 <p>监督训练的标签是 one-hot，诚实的答案其实往往有不确定性，one-hot 会训练出过度自信。RLAF（reinforcement learning from adjusted feedback）的做法是给每个问题构造一个<strong>调整后的目标分布 q̃</strong>：先由教师模型给出选项分布，再用已验证的结果 y*（金标、执行结果或游戏引擎输出）去调整，使目标分布与已知事实一致，同时保留教师在其余选项上的不确定性。奖励是一个恰当评分规则（proper scoring rule）——当结果从 q̃ 采样时，期望奖励在 p = q̃ 处取最大。报告用的是对数似然加球面距离项，score 问题再减去平方 Cramér 距离（即 ranked probability score）。</p>
-<p>因为每一项都是恰当评分规则，期望奖励恰好在 p = q̃ 处最大，所以<strong>准确性与校准被同时激励，而不是互相牺牲</strong>。优化用直接求导完成，本质上是对软目标的确定性损失函数，「强化」体现在 q̃ 的构造方式上。作者也试过 REINFORCE 估计梯度，没有胜过直接求导。</p>
+<p>因为每一项都是恰当评分规则，期望奖励恰好在 p = q̃ 处最大，所以<strong>准确性与校准被同时激励，而不是互相牺牲</strong>。优化用直接求导完成，本质上是对软目标的确定性损失函数，「强化」体现在 q̃ 的构造方式上。作者也试过 REINFORCE 估计梯度，没有胜过直接求导。和<a href="/multi-harness-rl.html">Multi-Harness RL 把 agent harness 当 RL 环境</a>那条路相比，RLAF 不依赖 rollout 采集，奖励直接来自教师分布和已验证结果，更适合离线、有金标的决策任务。</p>
 <p>Drex Max 用的是带 KL 正则的变体：奖励 = 验证结果命中项（ρ·1[a=y*]）+ 裁判对数概率（η·log q^J_a），再减去 β·KL(π_θ ‖ π_0)，π_0 是冻结的 SFT 模型，裁判是 Max 自己基座的生成式形态（同请求做长思维链推理后给出分布），不是更强的模型。裁判的作用是提供一个可以长推理的第二意见，贡献第二分布。消融显示 RLAF 给 Decision Index 带来 +2.0 分、准确率 +1.5 个百分点、ECE 降 0.9 个百分点。</p>
 
 <h2 id="yi-zhi-xing-sun-shi"><a href="#yi-zhi-xing-sun-shi" class="headerlink" title="一致性损失项：翻转率从 6.3% 压到 4.2%"></a>一致性损失项：翻转率从 6.3% 压到 4.2%</h2>
@@ -52,6 +62,12 @@ description: "Nace.AI 开源了四个决策模型：用户给定选项集，模�
 <p>Decision Index 0.4.1（37 个公开 benchmark，按五个领域加权）：Max 公开套 67.52，全分（含私有子集）66.60，是所对比决策模型中的新纪录，Jev 1.14.0 公开套 60.70。Artificial Analysis 独立跑的 Decision Index 上，Max 在决策模型里第二（64 vs 前三的 65）。Decision Bench v4 上，Max 通过图像编码器直接吃图时准确率 94.0%，与 GPT-6 Sol、d3-turbo 统计上无差异，比 Claude Opus 5.5 低 1.6 个百分点；DecideBench 上决策模型里最高，JevBench-231 上与最强模型相当。Max 在知识领域领先指针模型，但在闭卷知识测试上整体仍落后前沿聊天模型——报告把知识密集型查询路由到其它系统列为后续方向。</p>
 <p>消融（Table 7，同一基座、同一训练数据）：SFT only 64.9 → SFT+RLAF（无一致性项）66.4 → SFT+RLAF（含一致性项）66.9 → 加视觉 SFT 66.8。视觉 SFT 段对文本输入无损（66.9→66.8），对纯图像问题把 Decision Bench 60 个图像题的准确率从 63.3% 拉到 98.3%。</p>
 <p>对做训练基础设施优化的读者，这篇报告里有两个可迁移的点：一是「恰当评分规则做奖励 + KL 正则到参考策略」这个 RLAF 配方，比 GRPO 类的可验证奖励更适合校准敏感的任务；二是把顺序鲁棒性做成显式的损失项而不是事后测量——如果模型要在生产里被选项排列「打乱」，训练时就该惩罚它。</p>
+
+<h1 id="jing-xuan-wen-da"><a href="#jing-xuan-wen-da" class="headerlink" title="常见问题"></a>常见问题</h1>
+<p><strong>决策模型和自回归 LLM 的选择题，到底差在哪？</strong><br>自回归模型是「生成文本再解析」：概率来自 token 概率的乘积，选项共享前缀或长度不同时，整串概率的归一化和模型对整个字符串的偏好并不一致，还要逐步重归一化。决策模型是「直接读出分布」：训练目标就是选项集合上的分布，一次前向给出全部选项的概率，输出天然封闭在用户提供的选项集上。</p>
+<p><strong>为什么 Max 要每个问题重新编码状态，不干脆也用缓存？</strong><br>Max 的全注意力层是非因果的——早期 token 能注意到后续 token，状态的表示因此依赖具体问题，无法跨问题共享。这是用成本换精度：双向注意力让所有选项在回答前互相比较、和上下文双向交互，因果指针做不到。短上下文差别不大（183ms vs 145ms），长文档多问题时指针模型仍便宜得多。</p>
+<p><strong>翻转率 4.2% 意味着什么？</strong><br>把选项顺序随机打乱，有 4.2% 的决策里最高概率的选项会换人。这些翻转大多发生在选项多、模型本来就不确定的决策上——模型已经知道自己没把握。报告里一个实用推论：在翻转率高的负载上，拒绝回答「翻转的决策」和拒绝回答「置信度最低的决策」，准确率差不多。</p>
+<p><strong>RLAF 里的裁判为什么用 Max 自己的基座，而不是更强的模型？</strong><br>裁判是 Max 基座的生成式形态（Qwen3.8-27B 高推理模式），和决策版同一个底座，但能以长思维链推理后给出分布。它不是更准的模型，而是一个提供「第二意见」的独立推理者——给没有可验证结果的记录也提供分布。报告诚实指出裁判可能带来的两个副作用：过拟合裁判的偏好、以及让最优策略过度自信，但都未实测。</p>
 
 <h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
 <ul>

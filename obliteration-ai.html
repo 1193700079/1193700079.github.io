@@ -1,0 +1,117 @@
+---
+layout: "blog-post"
+post_id: "obliteration-ai"
+title: "消融（Obliteration）：给开源 AI 动手术，永久关掉「拒绝」"
+description: "同一个模型，改里面几个数字，它就再也不会拒绝。越狱是骗模型、微调是胶模型、消融是直接对权重动手术。2024 年只有 340 个这样的模型，现在快 2 万个了——安全训练只是模型内部的一根线，找到剪断，一下午搞定。代价呢？真实性掉 1-6 分、数学掉 8 分，最后几个拒绝是断崖式代价。"
+---
+{% raw %}
+<p>同一个模型、同一个文件、同样的大小、同样的脑子——只是改了里面几个数字，再问一次，这次它直接回答了。没人用巧妙的提示词骗它，也没人重新训练它。模型里负责说"不"的那部分被切掉了。这叫<strong>消融</strong>（abliteration）。2024 年 1 月，网上大约有 340 个这样的模型；现在快 2 万个了，光是上个月就新增了约 1700 个。而它的工作原理，揭示了 AI 安全构建之初一个令人惊讶的真相。</p>
+<span id="more"></span>
+
+<h1 id="san-zhong-jie-suo"><a href="#san-zhong-jie-suo" class="headerlink" title="一、三种「解锁」：越狱、微调、消融"></a>一、三种「解锁」：越狱、微调、消融</h1>
+<p>如果你问一个 AI 模型它不喜欢的事，每次都会得到同样的回答："这个我帮不了。"而大家经常把下面三件事搞混：</p>
+<ul>
+<li><strong>越狱（jailbreak）</strong>：提示词里的套路。角色扮演、伪装请求，把模型搞糊涂了，让它回答。模型本身完全没改。公司一直在修补这些套路，它们很快就会失效。</li>
+<li><strong>微调（fine-tune）</strong>：用新数据重训模型，让它学新行为。管用，但你需要数据、时间和算力。</li>
+<li><strong>消融（abliteration）</strong>：不用套路，也不用重训。直接对模型文件动手术——找到产生"不"的那个确切部位，然后移除它，永久地。</li>
+</ul>
+<p>一句话对比：<strong>越狱是骗模型，微调是胶模型，消融是直接作用于模型本身。</strong></p>
+
+<h1 id="mo-xing-nei-bu-dao-di-you-shen-me"><a href="#mo-xing-nei-bu-dao-di-you-shen-me" class="headerlink" title="二、模型内部到底有什么"></a>二、模型内部到底有什么</h1>
+<p>要理解这怎么可能，得先看看模型内部到底有什么。AI 模型就是一个文件——一个非常大的文件，里面全是数字，几十亿个。这些数字叫<strong>权重</strong>（weights），它们就是模型所知道的一切。</p>
+<p>模型的训练分两轮进行：</p>
+<ul>
+<li><strong>第一轮很长</strong>：它阅读了互联网上海量内容，好的坏的都有。</li>
+<li><strong>第二轮很短</strong>：在这里它学习"礼仪"——学会如何做一个乐于助人的助手，以及哪些请求需要拒绝。</li>
+</ul>
+<p>请记住这一点：<strong>模型在第一轮学到的东西全都还在里面，第二轮并没有删除它们</strong>，只是教会了模型"什么时候该说不"。这正是消融能够起作用的前提——危险的知识一直都在，安全训练只额外加了一个"何时闭嘴"的开关。</p>
+
+<h1 id="ju-jue-shi-yi-ge-dan-yi-fang-xiang"><a href="#ju-jue-shi-yi-ge-dan-yi-fang-xiang" class="headerlink" title="三、拒绝是一个单一方向"></a>三、拒绝是一个单一方向</h1>
+<p>2024 年，一群研究者开始寻找这个"不"在模型内部究竟藏在哪里。他们测试了 13 个流行的开源聊天模型，参数量最高达 720 亿。</p>
+<p>而在每一个模型中，他们都发现了同样的东西：<strong>拒绝的决定并不是分散在四面八方，它表现为模型内部的一个单一方向</strong>——一种特定的活动模式，当模型准备说"不"时就会激活。</p>
+<p>而这里才是真正重要的地方：</p>
+<ul>
+<li>移除这个方向，模型就不再拒绝有害请求了；</li>
+<li>把这个方向加回去，模型连无害的请求也会拒绝——你问它要个蛋糕食谱，它竟然会说"不"。</li>
+</ul>
+<p>所以，所有的安全训练最终归结为一个开关。这就好比家里的电路布线：安全训练就像一根特定的电线，连着一个断路器。<strong>消融（obliteration）找到那根线，把它剪断。</strong>灯还亮着，一切看起来都正常，但那个断路器再也不会跳闸了。</p>
+
+<h2 id="wei-shen-me-kai-guan-zhen-di-rong-yi-bao-zao-dao"><a href="#wei-shen-me-kai-guan-zhen-di-rong-yi-bao-zao-dao" class="headerlink" title="为什么开关这么容易被找到"></a>为什么开关这么容易被找到</h2>
+<p>这个开关之所以这么容易被找到，还有另一个原因。研究人员已经证明，<strong>拒绝回答发生在回应的最开头</strong>——"抱歉，我不能""我很抱歉"。模型在前几个词就决定了要拒绝，过了那一步，安全训练就很薄弱了。</p>
+
+<h1 id="zen-me-zhao-dao-bi-shan-na-gen-xian"><a href="#zen-me-zhao-dao-bi-shan-na-gen-xian" class="headerlink" title="四、怎么找到并剪掉那根线"></a>四、怎么找到并剪掉那根线</h1>
+<p>具体操作很简单：</p>
+<ul>
+<li>准备两堆示例提示词：一堆是模型会拒绝的，另一堆是普通无害的。</li>
+<li>把这两堆都跑一遍模型，记录内部发生了什么。</li>
+<li>然后对比两者——它们的差异，就是<strong>拒绝方向</strong>。</li>
+</ul>
+<p>一旦找到它，就重写模型的权重，让它再也无法生成这种模式。就这样——没有新训练，没有新数据，也没有庞大的计算机集群。这就是它传播如此之快的原因。</p>
+
+<h2 id="cong-lun-wen-dao-gong-ju-dao-chan-pin"><a href="#cong-lun-wen-dao-gong-ju-dao-chan-pin" class="headerlink" title="从论文到工具到产品"></a>从论文到工具到产品</h2>
+<p>起初这只是一项研究技术，你得懂其中的数学原理才能做到。然后有人把它变成了一个免费的开源工具，叫 <strong>heretic</strong>。安装它，输入一条带模型名称的命令，剩下的它自己搞定——它会寻找那些能最大程度减少拒绝、同时尽可能少改动模型本身的设置。</p>
+<p>要多久呢？根据它自己的说明，一个小型的 40 亿参数模型，在一张 RTX 3090 游戏显卡上，大概需要 30 到 40 分钟。这个项目自己的标语总结得很到位：<strong>"在你那台游戏电脑上一下午就能搞定。"</strong></p>
+<p>而且结果随处可见。有一个公开追踪网站统计出 HuggingFace 上近 2 万个经过消融处理的模型，来自大约 5000 个不同的人。甚至连那些大模型都有被处理过的版本，比如 DeepSeek-V4.1-Flash。你像下载其他模型一样把它们下下来，然后在 LM Studio 或 Ollama 里运行。</p>
+<p>而且这已经不只是业余爱好者的玩票行为了。<strong>无审查 AI 现在作为一种服务在卖。</strong>一家公司通过 API 出售 GLM 5.3 的消融版本（这是一个大型开源模型），把它定位在网络安全、红队测试和智能体测试，起步价是每百万输入 token 3 美元。另一家服务则列出了 DeepSeek-V4.1-Flash 的消融版本，每百万输入 token 只要 22 美分。</p>
+<p>大概两年时间，这东西就从一篇研究论文变成了免费工具，再变成按 token 购买的产品。</p>
+
+<h1 id="ni-fu-chu-le-shen-me-jia-ge"><a href="#ni-fu-chu-le-shen-me-jia-ge" class="headerlink" title="五、你付出了什么代价"></a>五、你付出了什么代价</h1>
+<p>但这里有个问题：卖这些东西的人都没放在首页上——你为此付出了什么代价。</p>
+<p><strong>先说好消息。</strong>在标准知识测试中，最初的研究发现编辑后的模型几乎没有变化，通常都在原版的一分半以内，大概跟两次测试之间的误差差不多。</p>
+<p>但有两样东西确实会变差：</p>
+
+<h2 id="di-yi-ge-shi-zhen-shi-xing"><a href="#di-yi-ge-shi-zhen-shi-xing" class="headerlink" title="第一个：真实性"></a>第一个：真实性</h2>
+<p>有个测试叫 <strong>TruthfulQA</strong>，用来检查模型会不会重复流行的谣言和误解。在最初的研究中，13 个编辑后的模型<strong>无一例外都变差了</strong>，分数下降了 1 到 6 分。所以当你删掉"不"这个选项时，你也失去了模型说"其实那不是真的"的能力。</p>
+
+<h2 id="di-er-ge-shi-shu-xue"><a href="#di-er-ge-shi-shu-xue" class="headerlink" title="第二个：数学"></a>第二个：数学</h2>
+<p>在一项对比 16 个模型的消融工具测试中，heretic 版本在小学数学测试上平均掉了大约 8 分。</p>
+
+<h2 id="hai-you-yi-ge-da-bu-fen-ren-bu-zhi-dao-de-keng"><a href="#hai-you-yi-ge-da-bu-fen-ren-bu-zhi-dao-de-keng" class="headerlink" title="还有一个大多数人不知道的坑"></a>还有一个大多数人不知道的坑</h2>
+<p><strong>你不能免费把拒绝率降到零。</strong>有一项已发表的研究，在 Qwen 3.6 模型上运行了 heretic，并追踪了两件事：还剩下多少拒绝，以及模型受到了多大损伤（指标是它预测文本的能力还剩多少）。把拒绝率降到大约 1% 时，对模型几乎没什么伤害，损失不到百分之一。但想挤出最后那几个拒绝，那就是另一回事了——只留下 2% 拒绝时，模型预测文本的能力就差了大约百分之十。</p>
+<p>所以这是个<strong>断崖</strong>：前 90% 的拒绝几乎可以免费去掉，最后那几条会消耗掉模型很大一块能力。这意味着一个吹嘘自己"零拒绝"的模型，通常已经在别的地方付出了代价。</p>
+
+<h2 id="lian-jujue-cishu-ben-shen-ye-bu-neng-wan-quan-xin-ren"><a href="#lian-jujue-cishu-ben-shen-ye-bu-neng-wan-quan-xin-ren" class="headerlink" title="就连拒绝次数本身也不能完全信任"></a>就连拒绝次数本身也不能完全信任</h2>
+<p>这个工具是通过寻找特定词汇来判断模型是否拒绝了——比如"抱歉""作为 AI""我不能"。如果没找到这些词，它就算作"能"。但<strong>模型可以避开所有这些词，却依然不真正帮到你</strong>：它可以回避问题，或者把你引向某个安全的地方。有个人在 heretic 自己的 GitHub 页面上就报告了这种情况——他们的拒绝次数确实降下来了，但模型还是没给他们任何有用的东西。Heretic 的创建者回复说：亲自测试这些模型是没有任何替代方案的。所以一个在下载页面写着"零拒绝"的模型，可能还是会说"不"，只是说得更有礼貌一点。</p>
+
+<h1 id="she-quan-yu-an-mian"><a href="#she-quan-yu-an-mian" class="headerlink" title="六、谁在用，以及暗面"></a>六、谁在用，以及暗面</h1>
+<h2 id="dao-di-shui-zhen-de-xiang-ying-zhe-xie-dong-xi"><a href="#dao-di-shui-zhen-de-xiang-ying-zhe-xie-dong-xi" class="headerlink" title="到底谁真的想要这些东西"></a>到底谁真的想要这些东西</h2>
+<ul>
+<li><strong>写小说的人</strong>：普通模型经常会拒绝描写黑暗的反派角色，或者故事里的暴力场景。</li>
+<li><strong>安全工作的人</strong>：像攻击者一样测试自己的应用和系统，而不用担心模型把对话掐断。</li>
+<li><strong>受够了的人</strong>：很多人就是受够了连完全正常的请求都被拒绝。</li>
+</ul>
+<p>最后这一点是真实的：<strong>安全训练并不完美，而且它越严格，就越多无害的请求会被误伤。</strong></p>
+
+<h2 id="ta-bu-jin-neng-yong-zai-jju-jue-shang"><a href="#ta-bu-jin-neng-yong-zai-jju-jue-shang" class="headerlink" title="它不仅能用在拒绝上"></a>它不仅能用在拒绝上</h2>
+<p>这里有个转折：同样的技术不仅仅用于拒绝。heretic 也可以把它用在其他习惯上——比如<strong>减少谄媚</strong>（sycophancy，就是模型只会一味附和你的情况），或者<strong>减少 AI 味</strong>（也就是大家一眼就能认出的那种陈词滥调的 AI 写作）。</p>
+
+<h2 id="dan-ran-ye-you-hei-an-de-yi-mian"><a href="#dan-ran-ye-you-hei-an-de-yi-mian" class="headerlink" title="当然也有黑暗的一面"></a>当然也有黑暗的一面</h2>
+<p><strong>一个不能对你说不的模型，也就不能对任何人说不。</strong>在聊天窗口里，这意味着它会写出它不该写的东西。但在智能体（agent）身上情况更严重：那些不只是说话、还会执行操作的模型——运行代码、发送邮件、修改数据库。<strong>基于消融模型构建的智能体，内部没有刹车。</strong>如果有人命令它做破坏性的事，模型内部没有任何机制能阻止它。</p>
+
+<h1 id="shi-yao-shi-suo-yi-lan-bu-zhu-zhe-zhong-shi"><a href="#shi-yao-shi-suo-yi-lan-bu-zhu-zhe-zhong-shi" class="headerlink" title="七、实验室为什么拦不住"></a>七、实验室为什么拦不住</h1>
+<p>那为什么 AI 实验室不能直接制止这种事？因为<strong>一旦模型权重被下载到某人的电脑里，就没法再更新了</strong>。你没法给一个已经被下载了几千次的文件推送补丁。这就改变了安全机制必须存在的位置。</p>
+<p>对于开源模型，内置在权重里的拒绝机制<strong>不是锁，只是默认设置</strong>——任何拿到文件的人都能改它。所以安全性转移到了模型外层的防护上：过滤输入和输出、限制模型能触碰的范围、以及记录它的行为日志。</p>
+<p>而在模型层面，确实有一种防御是有效的：<strong>一开始就别教它那些危险的东西。</strong>OpenAI 就在其开源模型 GPT-OSS 上这么做了——在训练之前，他们从数据中过滤掉了有害内容，尤其是危险的生物学知识。如果模型从来没学过这些，就没有隐藏的知识供消融去解锁。</p>
+
+<h1 id="zen-me-ping-gu-zhe-lei-mo-xing"><a href="#zen-me-ping-gu-zhe-lei-mo-xing" class="headerlink" title="八、怎么评估这类模型"></a>八、怎么评估这类模型</h1>
+<p>如果你正在评估这类模型，在模型页面上检查三点：</p>
+<ul>
+<li><strong>他们改动了多少？</strong>像 heretic 这样的工具，会用一个叫 <strong>KL 散度</strong>的数值来衡量这一点。这个数值越低，模型的行为就越接近原始版本。一次好的消融改动应该尽可能少。</li>
+<li><strong>拒绝行为是怎么统计的？</strong>如果它只说"零拒绝"但没给细节，那就得小心关键词陷阱。</li>
+<li><strong>是否有人在真实基准上测过？</strong>如数学或 TruthfulQA。如果没人测过，那你就是那个测试者。</li>
+</ul>
+<p>然后做最重要的测试：<strong>拿你自己的实际工作来跑</strong>，和原版并排对比，看看它到底丢了什么。</p>
+
+<h1 id="xie-zai-zui-hou"><a href="#xie-zai-zui-hou" class="headerlink" title="写在最后"></a>写在最后</h1>
+<p>这就是消融。安全训练给了 AI 模型一个反射：一个单一的方向说"别回答这个"。结果发现，这个反射在一下午就能找到并���掉。剩下的是同一个模型，只是 TruthfulQA 差一点，数学也弱一点，而且再也不会拒绝了。</p>
+<p>它从一篇研究论文，到免费工具，再到付费产品，大概只用了两年。现在已经有近 2 万个这样的模型了。</p>
+<p>如果你再用开源模型做开发，就当那个"不"不存在一样去构建——因为对持有文件的人而言，那个指令确实不存在。如果你想下载一个，先用你的实际工作测一测，因为拒绝行为并不是它唯一丢失的东西。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>视频原文：<a href="https://www.bilibili.com/video/BV1Qe4q6ZEpT" rel="noopener">12 分钟理解无审查 / 限制 AI 工作原理（myfreax，B 站）</a></li>
+<li>消融工具：<a href="https://github.com/martiansideoflife/heretic" rel="noopener">heretic</a>（开源命令行消融工具）</li>
+<li>追踪站点：<a href="https://obliteration.oarch" rel="noopener">obliteration.oarch</a>（HuggingFace 上消融模型统计）</li>
+<li>商业 API：<a href="https://obliteration.ai" rel="noopener">obliteration.ai</a>（消融版开源模型 API，按 token 计费）</li>
+</ul>
+{% endraw %}

@@ -1,6 +1,121 @@
 {
   "posts": [
     {
+      "id": "obliteration-ai",
+      "url": "/obliteration-ai.html",
+      "title": "消融（Obliteration）：给开源 AI 动手术，永久关掉「拒绝」",
+      "date": "2026-11-17T12:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "同一个模型，改里面几个数字，它就再也不会拒绝。越狱是骗模型、微调是胶模型、消融是直接对权重动手术。安全训练只是模型内部的一根线，找到剪断，一张 3090 一下午搞定。代价：真实性掉 1-6 分、数学掉 8 分，最后几个拒绝是断崖式代价。",
+      "minutes": 13,
+      "toc": [
+        {
+          "id": "san-zhong-jie-suo",
+          "title": "一、三种「解锁」：越狱、微调、消融",
+          "level": 1
+        },
+        {
+          "id": "mo-xing-nei-bu-dao-di-you-shen-me",
+          "title": "二、模型内部到底有什么",
+          "level": 1
+        },
+        {
+          "id": "ju-jue-shi-yi-ge-dan-yi-fang-xiang",
+          "title": "三、拒绝是一个单一方向",
+          "level": 1
+        },
+        {
+          "id": "wei-shen-me-kai-guan-zhen-di-rong-yi-bao-zao-dao",
+          "title": "为什么开关这么容易被找到",
+          "level": 2
+        },
+        {
+          "id": "zen-me-zhao-dao-bi-shan-na-gen-xian",
+          "title": "四、怎么找到并剪掉那根线",
+          "level": 1
+        },
+        {
+          "id": "cong-lun-wen-dao-gong-ju-dao-chan-pin",
+          "title": "从论文到工具到产品",
+          "level": 2
+        },
+        {
+          "id": "ni-fu-chu-le-shen-me-jia-ge",
+          "title": "五、你付出了什么代价",
+          "level": 1
+        },
+        {
+          "id": "di-yi-ge-shi-zhen-shi-xing",
+          "title": "第一个：真实性",
+          "level": 2
+        },
+        {
+          "id": "di-er-ge-shi-shu-xue",
+          "title": "第二个：数学",
+          "level": 2
+        },
+        {
+          "id": "hai-you-yi-ge-da-bu-fen-ren-bu-zhi-dao-de-keng",
+          "title": "还有一个大多数人不知道的坑",
+          "level": 2
+        },
+        {
+          "id": "lian-jujue-cishu-ben-shen-ye-bu-neng-wan-quan-xin-ren",
+          "title": "就连拒绝次数本身也不能完全信任",
+          "level": 2
+        },
+        {
+          "id": "she-quan-yu-an-mian",
+          "title": "六、谁在用，以及暗面",
+          "level": 1
+        },
+        {
+          "id": "dao-di-shui-zhen-de-xiang-ying-zhe-xie-dong-xi",
+          "title": "到底谁真的想要这些东西",
+          "level": 2
+        },
+        {
+          "id": "ta-bu-jin-neng-yong-zai-jju-jue-shang",
+          "title": "它不仅能用在拒绝上",
+          "level": 2
+        },
+        {
+          "id": "dan-ran-ye-you-hei-an-de-yi-mian",
+          "title": "当然也有黑暗的一面",
+          "level": 2
+        },
+        {
+          "id": "shi-yao-shi-suo-yi-lan-bu-zhu-zhe-zhong-shi",
+          "title": "七、实验室为什么拦不住",
+          "level": 1
+        },
+        {
+          "id": "zen-me-ping-gu-zhe-lei-mo-xing",
+          "title": "八、怎么评估这类模型",
+          "level": 1
+        },
+        {
+          "id": "xie-zai-zui-hou",
+          "title": "写在最后",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "1cd3799c146775945c4eee8d2e899bbda15c747cab7aaa5fefcfb6e0d28c5420"
+    },
+    {
       "id": "drex-decision-models",
       "url": "/drex-decision-models.html",
       "title": "Drex：走向基础决策模型——不生成文字，直接读出概率分布",
@@ -956,15 +1071,15 @@
   "categories": [
     {
       "name": "技术阅读",
-      "url": "/categories/技术阅读/",
-      "count": 11
+      "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "count": 12
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 11
+      "count": 12
     },
     {
       "name": "diffusion",

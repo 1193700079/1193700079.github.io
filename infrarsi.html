@@ -25,11 +25,43 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 <h2 id="wu-da-dian"><a href="#wu-da-dian" class="headerlink" title="五大产品亮点"></a>五大产品亮点</h2>
 <ul>
 <li><strong>参数 + 代码协同优化</strong>：几何平均提速 1.83×（最高 2.75×），对比 METR RE-Bench 1.37×、Auto-Research 1.34×、纯调参 OptiCo 1.23×。</li>
+
 <li><strong>全栈通用</strong>：原生适配 Megatron-Core、FSDP2/TorchTitan、DeepSpeed、HF Trainer/TRL、PyTorch DDP 五大训练栈；稠密与 MoE、单机与多机通吃。可直接复用本机已登录的 Claude Code 或 Codex CLI（<code>--llm claude-cli</code> / <code>--llm codex-cli</code>），不用配 API Key；也支持 DeepSeek、Anthropic/OpenAI API、OpenRouter/硅基流动等任意 OpenAI 兼容接口与内网 vLLM。</li>
 <li><strong>说人话提约束</strong>：开跑前交互式问答逐项确认配置（CI 可 <code>--yes</code> 静默）；自然语言写限制如 <code>--requirements "不能改优化器"</code>，会被编译成旋钮边界、冻结文件或强制校验项，只收紧不放宽；运行中 Ctrl-G 打开面板、Ctrl-C 优雅停机并保留当前最佳成果。</li>
 <li><strong>严苛校验</strong>：5 层 16 项 Harness 强校验，每个候选必须保证训练负载/数据/参数/优化器步数不变、Loss 偏差在容差内（默认 3%），胜出者还要过与基线背靠背的同卡复测。可选双模型交叉把关（如 <code>--llm codex-cli --second-llm claude-cli</code>）：两个模型独立提案、匿名盲评、代码补丁上 GPU 前做两轮交叉 Code Review。</li>
 <li><strong>越用越强</strong>：验证过的运行沉淀为结构化经验包写回本地/团队共享经验库。换全新 GPU 型号时，历史经验仍能热启动——Qwen3.5-9B（8×H100）上仅凭其它型号积累的经验，加速比从冷启动 1.70× 提到 1.82×，第 9 次试验（2.97 GPU·h）就触及 90% 峰值，冷启动预算耗尽都没到。</li>
 </ul>
+<figure class="blog-chart">
+<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="infrarsi-speedup-title infrarsi-speedup-desc">
+  <style>
+    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+  <title id="infrarsi-speedup-title">几何平均加速比（×）</title>
+  <desc id="infrarsi-speedup-desc">几何平均加速比（×）. horizontal bar data: InfraRSI 1.83; METR RE-Bench 1.37; Auto-Research 1.34; OptiCo（纯调参） 1.23. Source: InfraRSI 技术报告.</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">几何平均加速比（×）</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">H100/H200 四大训练负载，成本核算含失败试验消耗</tspan></text>
+  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08" />
+<text x="136.0" y="109.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">InfraRSI</tspan></text>
+<rect x="145" y="78.0" width="365.0" height="49.0" rx="4" fill="#f97316" />
+<text x="518.0" y="109.8" font-size="11" fill="currentColor">1.83</text>
+<text x="136.0" y="166.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">METR RE-Bench</tspan></text>
+<rect x="145" y="135.0" width="273.3" height="49.0" rx="4" fill="#38bdf8" />
+<text x="426.3" y="166.8" font-size="11" fill="currentColor">1.37</text>
+<text x="136.0" y="223.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">Auto-Research</tspan></text>
+<rect x="145" y="192.0" width="267.3" height="49.0" rx="4" fill="#a78bfa" />
+<text x="420.3" y="223.8" font-size="11" fill="currentColor">1.34</text>
+<text x="136.0" y="280.9" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">OptiCo（纯调参）</tspan></text>
+<rect x="145" y="249.0" width="245.3" height="49.0" rx="4" fill="#22c55e" />
+<text x="398.3" y="280.9" font-size="11" fill="currentColor">1.23</text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: InfraRSI 技术报告</text>
+</svg>
+<figcaption>Source: <a href="https://arxiv.org/abs/2611.11558">InfraRSI 技术报告</a>.</figcaption>
+</figure>
 
 <h1 id="si-da-fan-chuan"><a href="#si-da-fan-chuan" class="headerlink" title="二、直接拿 Coding Agent 调训练为什么翻车"></a>二、直接拿 Coding Agent 调训练为什么翻车</h1>
 <p>作者系统复盘了大量真实分布式训练优化轨迹，总结出四类典型失效：</p>
@@ -67,6 +99,34 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 
 <h1 id="shi-ce-zhan-ji"><a href="#shi-ce-zhan-ji" class="headerlink" title="四、实测战绩"></a>四、实测战绩</h1>
 <p>在完全一致的任务契约与成本核算下（失败及审计剔除试验消耗的 Token 全额计入横轴），H100 与 H200 集群上四个代表性单机/多机、稠密/MoE 大模型训练任务：几何平均加速 1.83×（最高 2.75×），平均 MFU 从 17.4% 拉到 30.0%（稠密模型最高 45.4%）。最印象深刻的是 Gemma-4-26B-A4B MoE（8×H200）的 2.75× 突破——其它基准方法全卡在 1.29×–1.33× 的局部最优盆地；B-Comp 通过右截断显存账本识别出「关闭 Liger 可释放 14 GiB 显存并消除与 torch.compile 的死锁冲突」，解锁「关闭激活重算 + 图编译」三方协同，再自动合成为 25 个滑动窗口层缓存块稀疏掩码的编译版 FlexAttention 补丁及 5 个全局层的分块因果注意力算子，MFU 提升近三倍。</p>
+<figure class="blog-chart">
+<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="infrarsi-mfu-title infrarsi-mfu-desc">
+  <style>
+    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+  <title id="infrarsi-mfu-title">模型算力利用率 MFU（%）</title>
+  <desc id="infrarsi-mfu-desc">模型算力利用率 MFU（%）. horizontal bar data: 优化前平均 17.4; 优化后平均 30; 稠密模型最高 45.4. Source: InfraRSI 技术报告.</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">模型算力利用率 MFU（%）</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">按每卡 989.5 TFLOP/s 非稀疏 BF16 峰值折算</tspan></text>
+  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08" />
+<text x="136.0" y="122.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">优化前平均</tspan></text>
+<rect x="145" y="78.0" width="139.9" height="68.0" rx="4" fill="#f97316" />
+<text x="292.9" y="122.2" font-size="11" fill="currentColor">17.4</text>
+<text x="136.0" y="198.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">优化后平均</tspan></text>
+<rect x="145" y="154.0" width="241.2" height="68.0" rx="4" fill="#38bdf8" />
+<text x="394.2" y="198.2" font-size="11" fill="currentColor">30</text>
+<text x="136.0" y="274.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">稠密模型最高</tspan></text>
+<rect x="145" y="230.0" width="365.0" height="68.0" rx="4" fill="#a78bfa" />
+<text x="518.0" y="274.2" font-size="11" fill="currentColor">45.4</text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: InfraRSI 技术报告</text>
+</svg>
+<figcaption>Source: InfraRSI 技术报告.</figcaption>
+</figure>
 
 <h1 id="kuai-su-shang-shou"><a href="#kuai-su-shang-shou" class="headerlink" title="五、30 秒快速上手"></a>五、30 秒快速上手</h1>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 1. 安装（Python 3.10+）</span><br><span class="line">git clone https://github.com/TokenRhythm/InfraRSI.git</span><br><span class="line">cd InfraRSI &amp;&amp; pip install -e .</span><br><span class="line"># 2. 一条命令启动，复用本机已登录的 Claude Code 或 Codex</span><br><span class="line">infrarsi optimize ./train.sh --llm claude-cli --screens 16</span><br><span class="line"># 3. 或接入 DeepSeek API + 自然语言约束</span><br><span class="line">export DEEPSEEK_API_KEY="your-key"</span><br><span class="line">infrarsi optimize ./train.sh \</span><br><span class="line">  --llm deepseek:deepseek-chat \</span><br><span class="line">  --requirements "不能改优化器" \</span><br><span class="line">  --budget-usd 10</span><br><span class="line"># 4. Skill 版本：在 Claude Code / Codex 会话里直接调用同一套引擎</span><br></pre></td></tr></table></figure>

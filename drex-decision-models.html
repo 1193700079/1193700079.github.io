@@ -57,10 +57,73 @@ description: "Nace.AI 开源了四个决策模型：用户给定选项集，模�
 
 <h2 id="shu-shi-you-hua"><a href="#shu-shi-you-hua" class="headerlink" title="没有解码循环的部署优化"></a>没有解码循环的部署优化</h2>
 <p>决策模型的推理和语言模型根本不同：没有 decode loop，整个请求落在一次 compute-heavy 的 prefill 里，状态编码一次、所有问题共享。这带来它自己的难点——短请求被 kernel launch 开销主导，长状态吃爆显存，延迟预算紧（决策模型通常挂在另一个系统的请求路径上）。报告里的优化：共享 prefill（8k token 状态、16 个问题、8 并发客户端下吞吐提升 10 倍）、按形状桶录制的 CUDA Graph（把基座和指针头一起录进一张图，单次 launch 重放），以及内核级改动。所有优化按「精确（位级一致）/近似」分类，近似类要单独验证。最终 Max 单请求中位延迟 183ms，每 1000 条决策 $0.06。</p>
+<figure class="blog-chart">
+<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="drex-latency-title drex-latency-desc">
+  <style>
+    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+  <title id="drex-latency-title">单请求中位延迟（毫秒）</title>
+  <desc id="drex-latency-desc">单请求中位延迟（毫秒）. horizontal bar data: Drex Max 183; Jev 1.14 196; GPT-6 Luna Dec. 326; GPT-6 Sol 2000; Claude Opus 5.5 3500. Source: Towards Foundation Decision Models: Drex (Table 8).</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">单请求中位延迟（毫秒）</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">2026-10 发布时，测试机位于俄勒冈，含 70–215ms 网络时延</tspan></text>
+  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08" />
+<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08" />
+<text x="136.0" y="102.4" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">Drex Max</tspan></text>
+<rect x="145" y="78.0" width="19.1" height="37.6" rx="4" fill="#f97316" />
+<text x="172.1" y="102.4" font-size="11" fill="currentColor">183</text>
+<text x="136.0" y="148.0" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">Jev 1.14</tspan></text>
+<rect x="145" y="123.6" width="20.4" height="37.6" rx="4" fill="#38bdf8" />
+<text x="173.4" y="148.0" font-size="11" fill="currentColor">196</text>
+<text x="136.0" y="193.6" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">GPT-6 Luna Dec.</tspan></text>
+<rect x="145" y="169.2" width="34.0" height="37.6" rx="4" fill="#a78bfa" />
+<text x="187.0" y="193.6" font-size="11" fill="currentColor">326</text>
+<text x="136.0" y="239.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">GPT-6 Sol</tspan></text>
+<rect x="145" y="214.8" width="208.6" height="37.6" rx="4" fill="#22c55e" />
+<text x="361.6" y="239.2" font-size="11" fill="currentColor">2000</text>
+<text x="136.0" y="284.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">Claude Opus 5.5</tspan></text>
+<rect x="145" y="260.4" width="365.0" height="37.6" rx="4" fill="#facc15" />
+<text x="518.0" y="284.8" font-size="11" fill="currentColor">3500</text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Towards Foundation Decision Models: Drex (Table 8)</text>
+</svg>
+<figcaption>Source: <a href="https://arxiv.org/abs/2611.07854">Towards Foundation Decision Models: Drex (Table 8)</a>.</figcaption>
+</figure>
 
 <h1 id="jie-guo"><a href="#jie-guo" class="headerlink" title="四、结果"></a>四、结果</h1>
 <p>Decision Index 0.4.1（37 个公开 benchmark，按五个领域加权）：Max 公开套 67.52，全分（含私有子集）66.60，是所对比决策模型中的新纪录，Jev 1.14.0 公开套 60.70。Artificial Analysis 独立跑的 Decision Index 上，Max 在决策模型里第二（64 vs 前三的 65）。Decision Bench v4 上，Max 通过图像编码器直接吃图时准确率 94.0%，与 GPT-6 Sol、d3-turbo 统计上无差异，比 Claude Opus 5.5 低 1.6 个百分点；DecideBench 上决策模型里最高，JevBench-231 上与最强模型相当。Max 在知识领域领先指针模型，但在闭卷知识测试上整体仍落后前沿聊天模型——报告把知识密集型查询路由到其它系统列为后续方向。</p>
 <p>消融（Table 7，同一基座、同一训练数据）：SFT only 64.9 → SFT+RLAF（无一致性项）66.4 → SFT+RLAF（含一致性项）66.9 → 加视觉 SFT 66.8。视觉 SFT 段对文本输入无损（66.9→66.8），对纯图像问题把 Decision Bench 60 个图像题的准确率从 63.3% 拉到 98.3%。</p>
+<figure class="blog-chart">
+<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="drex-ablation-title drex-ablation-desc">
+  <style>
+    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+  <title id="drex-ablation-title">Drex Max 训练消融：Decision Index 0.4.1 公开套</title>
+  <desc id="drex-ablation-desc">Drex Max 训练消融：Decision Index 0.4.1 公开套. grouped bar data: SFT only: Decision Index 64.9; SFT→RLAF 无一致性项: Decision Index 66.4; SFT→RLAF 含一致性项: Decision Index 66.9; 完整流水线（含视觉 SFT）: Decision Index 66.8. Source: Drex 论文 Table 7.</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">Drex Max 训练消融：Decision Index 0.4.1 公开套</text>
+  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">同一基座与训练数据，各训练变体的得分（chance-corrected skill）</tspan></text>
+  <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
+<line x1="72" y1="230.8" x2="492" y2="230.8" stroke="currentColor" opacity="0.08" />
+<line x1="72" y1="184.5" x2="492" y2="184.5" stroke="currentColor" opacity="0.08" />
+<line x1="72" y1="138.2" x2="492" y2="138.2" stroke="currentColor" opacity="0.08" />
+<line x1="72" y1="92.0" x2="492" y2="92.0" stroke="currentColor" opacity="0.08" />
+<rect x="72" y="62" width="10" height="10" fill="#f97316" />
+<text x="87" y="71" font-size="11" fill="currentColor">Decision Index</text>
+<rect x="115.5" y="97.5" width="16.0" height="179.5" fill="#f97316" />
+<text x="124.5" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="124.5" dy="0">SFT only</tspan></text>
+<rect x="220.5" y="93.4" width="16.0" height="183.6" fill="#f97316" />
+<text x="229.5" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="229.5" dy="0">SFT→RLAF</tspan><tspan x="229.5" dy="11">无一致性项</tspan></text>
+<rect x="325.5" y="92.0" width="16.0" height="185.0" fill="#f97316" />
+<text x="334.5" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="334.5" dy="0">SFT→RLAF</tspan><tspan x="334.5" dy="11">含一致性项</tspan></text>
+<rect x="430.5" y="92.3" width="16.0" height="184.7" fill="#f97316" />
+<text x="439.5" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="439.5" dy="0">完整流水线（含视觉</tspan><tspan x="439.5" dy="11">SFT）</tspan></text>
+  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Drex 论文 Table 7</text>
+</svg>
+<figcaption>Source: <a href="https://arxiv.org/abs/2611.07854">Drex 论文 Table 7</a>.</figcaption>
+</figure>
 <p>对做训练基础设施优化的读者，这篇报告里有两个可迁移的点：一是「恰当评分规则做奖励 + KL 正则到参考策略」这个 RLAF 配方，比 GRPO 类的可验证奖励更适合校准敏感的任务；二是把顺序鲁棒性做成显式的损失项而不是事后测量——如果模型要在生产里被选项排列「打乱」，训练时就该惩罚它。</p>
 
 <h1 id="jing-xuan-wen-da"><a href="#jing-xuan-wen-da" class="headerlink" title="常见问题"></a>常见问题</h1>

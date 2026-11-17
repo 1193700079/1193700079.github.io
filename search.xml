@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时</title>
+    <url>/rsi-self-evolution.html</url>
+    <content><![CDATA[如果 AI 能设计出一个比自己更聪明的 AI，下一代是不是又能设计出更强的下一代？递归自我改进（RSI）正把这条路径从概念推向工程。这篇梳理从哥德尔机、foundation model 自训练，到 harness 自进化的一整条谱系——并指出一个关键事实：许多 harness 进化的收益其实是过拟合和 test-time scaling。最后落在 Hinton、Bengio 的判断：软件驱动的智能爆炸在短期内是可能的，而行动的窗口可能正在关闭。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>消融（Obliteration）：给开源 AI 动手术，永久关掉「拒绝」</title>
     <url>/obliteration-ai.html</url>
     <content><![CDATA[同一个模型，改里面几个数字，它就再也不会拒绝。越狱是骗模型、微调是胶模型、消融是直接对权重动手术。安全训练只是模型内部的一根线，找到剪断，一张 3090 一下午搞定。代价：真实性掉 1-6 分、数学掉 8 分，最后几个拒绝是断崖式代价。<span id="more"></span>]]></content>

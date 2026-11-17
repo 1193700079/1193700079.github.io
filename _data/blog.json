@@ -1,6 +1,121 @@
 {
   "posts": [
     {
+      "id": "rsi-self-evolution",
+      "url": "/rsi-self-evolution.html",
+      "title": "AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时",
+      "date": "2026-11-17T13:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "如果 AI 能设计出一个比自己更聪明的 AI，下一代是不是又能设计出更强的下一代？递归自我改进（RSI）正把这条路径从概念推向工程。这篇梳理从哥德尔机、foundation model 自训练，到 harness 自进化的一整条谱系——并指出一个关键事实：许多 harness 进化的收益其实是过拟合和 test-time scaling。最后落在 Hinton、Bengio 的判断：软件驱动的智能爆炸在短期内是可能的，而行动的窗口可能正在关闭。",
+      "minutes": 18,
+      "toc": [
+        {
+          "id": "zhi-neng-bao-zha-yu-ge-de-er-ji",
+          "title": "一、智能爆炸与哥德尔机",
+          "level": 1
+        },
+        {
+          "id": "si-ge-fang-xiang",
+          "title": "二、RSI 的两个对象与四条线",
+          "level": 1
+        },
+        {
+          "id": "ttrl",
+          "title": "Foundation Model 线一：TTRL",
+          "level": 2
+        },
+        {
+          "id": "agent0",
+          "title": "Foundation Model 线二：Agent0",
+          "level": 2
+        },
+        {
+          "id": "harness-zi-jin-hua",
+          "title": "三、Harness 自进化",
+          "level": 1
+        },
+        {
+          "id": "stop",
+          "title": "STOP：递归自我改进的代码生成",
+          "level": 2
+        },
+        {
+          "id": "adas",
+          "title": "ADAS：agent 系统的自动化设计",
+          "level": 2
+        },
+        {
+          "id": "darwin-godel-machine",
+          "title": "达尔文哥德尔机：用进化树选 parent",
+          "level": 2
+        },
+        {
+          "id": "hyperagents",
+          "title": "Hyperagents：meta agent 与 task agent 解耦",
+          "level": 2
+        },
+        {
+          "id": "meta-harness",
+          "title": "Meta-Harness：文件系统存下所有经验",
+          "level": 2
+        },
+        {
+          "id": "ahe",
+          "title": "AHE：把可观察性引入 harness 工程",
+          "level": 2
+        },
+        {
+          "id": "harnessx",
+          "title": "HarnessX：九个维度的乐高式自进化",
+          "level": 2
+        },
+        {
+          "id": "shou-yi-gui-yin",
+          "title": "四、收益归因：过拟合、test-time scaling 与真进步",
+          "level": 1
+        },
+        {
+          "id": "rrsi",
+          "title": "五、RRSI：加正则化的递归自我改进",
+          "level": 1
+        },
+        {
+          "id": "open-endedness",
+          "title": "六、open-endedness：解决过拟合的根本出路",
+          "level": 1
+        },
+        {
+          "id": "gong-ye-jie-de-xin-hao",
+          "title": "七、工业界的信号：When AI Builds Itself",
+          "level": 1
+        },
+        {
+          "id": "hui-dao-zhe-pian-lun-wen",
+          "title": "八、回到 Hinton、Bengio 的那篇论文",
+          "level": 1
+        },
+        {
+          "id": "cai-dan",
+          "title": "彩蛋：如何追踪这些 paper",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "5fc9366dbb52bef18fef718c46a823568532a22cba0de88bf85bcf12d50de913"
+    },
+    {
       "id": "obliteration-ai",
       "url": "/obliteration-ai.html",
       "title": "消融（Obliteration）：给开源 AI 动手术，永久关掉「拒绝」",
@@ -1072,14 +1187,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 12
+      "count": 13
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 12
+      "count": 13
     },
     {
       "name": "diffusion",

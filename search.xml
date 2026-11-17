@@ -45,4 +45,14 @@
     <url>/qwen-sft-6x.html</url>
     <content><![CDATA[围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。<span id="more"></span>]]></content>
   </entry>
+  <entry>
+    <title>Drex：走向基础决策模型——不生成文字，直接读出概率分布</title>
+    <url>/drex-decision-models.html</url>
+    <content><![CDATA[Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
+    <title>InfraRSI：让训练基础设施自主探索与自我进化的 Agent Harness</title>
+    <url>/infrarsi.html</url>
+    <content><![CDATA[基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。<span id="more"></span>]]></content>
+  </entry>
 </search>

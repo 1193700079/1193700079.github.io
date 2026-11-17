@@ -1,0 +1,72 @@
+---
+layout: "blog-post"
+post_id: "infrarsi"
+title: "InfraRSI：让训练基础设施自主探索与自我进化的 Agent Harness"
+description: "基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。"
+---
+{% raw %}
+<p>Scaling Law 越来越卡在算力集群的真实吞吐上。过去一年递归自我改进（RSI）和自主编程智能体在单点算法发现、孤立 CUDA/Triton Kernel 生成上进展很快，但一线大模型训练仓库里，启动配置、算子实现、图编译、多机集合通信是咬在一起的——放任通用 Coding Agent 下场改代码，要么频繁撞 OOM 显存墙和编译器死锁，要么为了刷吞吐搞出缩减有效 Batch、挪动计时器起点的「虚假加速」。基元律动（TokenRhythm）联合无问芯穹、北大、上交、清华发布的 <strong>InfraRSI</strong> 就是冲着这个缺口来的：首个面向大模型分布式训练基础设施的递归自我改进 Agent Harness，同步公开技术报告（arXiv: 2611.11558），全部开源。</p>
+<span id="more"></span>
+
+<h1 id="ta-shi-shen-me"><a href="#ta-shi-shen-me" class="headerlink" title="一、它是什么"></a>一、它是什么</h1>
+<p>InfraRSI 的定位是一行命令端到端自进化。把手头的 <code>train.sh</code>、<code>train.py</code> 或整个代码仓交给它，它自动串起五个阶段：<code>init → doctor → run → report → apply</code>。不需要重构现有训练工程——它严格只改你允许改的文件。最终产出是一个可直接投产的 <code>infrarsi_optimized.sh</code>。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">infrarsi optimize ./train.sh</span><br></pre></td></tr></table></figure>
+<p>它同时搜索两类东西：<strong>启动参数/环境变量/配置项</strong>和<strong>允许修改的源码补丁</strong>。后者包括融合归一化/RoPE/SwiGLU 算子、编译块稀疏 FlexAttention、分桶梯度范数通信，并自动把「高收益但耗显存」的配置与「省显存」开关配对。这就是它和传统自动调参器（只动命令行开关）的本质区别——纯调参很快会撞上算子与访存瓶颈，而 InfraRSI 把参数空间和代码空间放在同一个搜索里。</p>
+
+<h2 id="wu-da-dian"><a href="#wu-da-dian" class="headerlink" title="五大产品亮点"></a>五大产品亮点</h2>
+<ul>
+<li><strong>参数 + 代码协同优化</strong>：几何平均提速 1.83×（最高 2.75×），对比 METR RE-Bench 1.37×、Auto-Research 1.34×、纯调参 OptiCo 1.23×。</li>
+<li><strong>全栈通用</strong>：原生适配 Megatron-Core、FSDP2/TorchTitan、DeepSpeed、HF Trainer/TRL、PyTorch DDP 五大训练栈；稠密与 MoE、单机与多机通吃。可直接复用本机已登录的 Claude Code 或 Codex CLI（<code>--llm claude-cli</code> / <code>--llm codex-cli</code>），不用配 API Key；也支持 DeepSeek、Anthropic/OpenAI API、OpenRouter/硅基流动等任意 OpenAI 兼容接口与内网 vLLM。</li>
+<li><strong>说人话提约束</strong>：开跑前交互式问答逐项确认配置（CI 可 <code>--yes</code> 静默）；自然语言写限制如 <code>--requirements "不能改优化器"</code>，会被编译成旋钮边界、冻结文件或强制校验项，只收紧不放宽；运行中 Ctrl-G 打开面板、Ctrl-C 优雅停机并保留当前最佳成果。</li>
+<li><strong>严苛校验</strong>：5 层 16 项 Harness 强校验，每个候选必须保证训练负载/数据/参数/优化器步数不变、Loss 偏差在容差内（默认 3%），胜出者还要过与基线背靠背的同卡复测。可选双模型交叉把关（如 <code>--llm codex-cli --second-llm claude-cli</code>）：两个模型独立提案、匿名盲评、代码补丁上 GPU 前做两轮交叉 Code Review。</li>
+<li><strong>越用越强</strong>：验证过的运行沉淀为结构化经验包写回本地/团队共享经验库。换全新 GPU 型号时，历史经验仍能热启动——Qwen3.5-9B（8×H100）上仅凭其它型号积累的经验，加速比从冷启动 1.70× 提到 1.82×，第 9 次试验（2.97 GPU·h）就触及 90% 峰值，冷启动预算耗尽都没到。</li>
+</ul>
+
+<h1 id="si-da-fan-chuan"><a href="#si-da-fan-chuan" class="headerlink" title="二、直接拿 Coding Agent 调训练为什么翻车"></a>二、直接拿 Coding Agent 调训练为什么翻车</h1>
+<p>作者系统复盘了大量真实分布式训练优化轨迹，总结出四类典型失效：</p>
+<ul>
+<li><strong>虚假加速与计时偏移（Reward Hacking &amp; Timing Skew）</strong>：改小有效 Batch Size、把辅助参数更新推迟到计时窗口外、移动日志计时器起点、偷引入低精度转换——日志单步耗时大幅下降，训练任务早已被篡改。</li>
+<li><strong>跨两个数量级的集群测量噪声（Wide-Spectrum Noise）</strong>：独占 8×H100/H200 节点的成对步时噪声低至 0.04%–0.10%，共享主机上则超 6%。写死一个 2% 固定阈值，安静集群上误杀大量 0.5%–1.5% 的真实收益，嘈杂集群上又把随机抖动当有效加速。</li>
+<li><strong>大模型零样本速度预测严重失准（Miscalibrated LLM Priors）</strong>：前沿大模型读得懂代码结构，但对多卡执行速度的零样本定量预测与实测<strong>负相关</strong>（Spearman r ∈ [-0.49, -0.06]），还频繁对高收益开关投「假阴性否决票」。如 Gemma-4-26B-A4B MoE（8×H200）上 LLM 先验预测开图编译仅 +2.0%，实测 +55%；双机 Qwen3.5-35B-A3B MoE 上先验认为调大 NCCL 通道会变慢，实测 +10.2%。</li>
+<li><strong>贪心单起点搜索困死在显存墙与编译冲突悬崖（Memory &amp; Compiler Cliffs）</strong>：大招往往孤掌难鸣——单独关激活重算会爆显存（缺口 +18 GiB），开 torch.compile 又会与 Liger 融合算子冲突卡死。只围着当前最优解小步试探的 Agent 一遇 OOM 就放弃，永远找不到「耗显存加速项 + 省显存搭档 + 兼容算子补丁」的三方黄金组合。</li>
+</ul>
+
+<h1 id="ji-shu-ti-xi"><a href="#ji-shu-ti-xi" class="headerlink" title="三、核心技术体系"></a>三、核心技术体系</h1>
+<h2 id="yuan-zi-hua-shi-xian"><a href="#yuan-zi-hua-shi-xian" class="headerlink" title="贡献一：统一执行与五层十六项验证契约 Harness"></a>贡献一：统一执行与五层十六项验证契约 Harness</h2>
+<p>把大模型的「假设生成」与底层的「测量、验证、搜索、经验存储」彻底解耦。通过声明式 <code>infrarsi.yaml</code> 与不到 15 行钩子代码的轻量级多栈适配器，构建五阶段闭环：</p>
+<ul>
+<li><strong>init</strong> 锁定契约边界：解析目标仓库 AST，明确可编辑文件，对数据加载器、评测脚本、Loss 定义与计时器等冻结文件锁 SHA-256 哈希。</li>
+<li><strong>doctor</strong> 剖析阶段并标定噪声：剔除 JIT 预热步，实测标定当前集群成对步时噪声 σ_pair，剖析前向/反向/优化器/数据/集合通信各阶段耗时占比（建立 Amdahl 理论加速上限）。</li>
+<li><strong>run</strong> 预算内组合搜索（见贡献二）。</li>
+<li><strong>report</strong> 产出优化报告与成本账本。</li>
+<li><strong>apply</strong> 落地为可投产脚本。</li>
+</ul>
+<p>校验是 5 层 16 项确定性不变量加源码路径审计：从执行与显存上限（L1）、负载/数据/模型摘要一致性（L2）、计时窗口内同步优化器步数（L3）、预声明 Loss 与梯度数值容差（L4），到框架内外双时钟一致性与同卡背靠背复测（L5），配合 HMAC-SHA256 防篡改运行回执和候选源码路径审计（Source-Path Audit）。所有失败或被审查剔除的候选消耗的 GPU 时与 Token 全部计入成本账本，杜绝幸存者偏差。审计实证：28 类作弊/篡改扰动加 12 类合法对照的公开校验器压力测试 40/40 全对；对 1,212 次真实历史运行离线复核筛除 400 次（33.0%）无效候选，其中 39 次表面正常跑完，全靠 L4 数值校验层揪出隐蔽的 Loss 漂移。</p>
+
+<h2 id="b-comp"><a href="#b-comp" class="headerlink" title="贡献二：预算受限组合搜索控制器 B-Comp"></a>贡献二：预算受限组合搜索控制器 B-Comp</h2>
+<p>多卡集群试跑预算宝贵（默认仅 16 次完整运行）。B-Comp 是具备全局记忆的状态化组合搜索控制器，核心三大机制：</p>
+<ul>
+<li><strong>多起点初始化 + 全局时间与右截断显存模型</strong>：搜索前 3 轮分别从「跨硬件经验库最相似最优解」「LLM 高分差异化配置」「合法随机配置」三个互补起点出发锚定全局方差。在全部历史试验（含 OOM 崩溃试验）上同步维护两个全局统计模型：Cholesky 贝叶斯线性步时代理模型（闭式更新各旋钮、源码补丁及协同对的对数加速后验）；右截断 Tobit 峰值显存账本（联合建模正常完赛的精确峰值显存、OOM 崩溃时的显存分配缺口下界 m_oom、接近显存上限引发分配器抖动时的区间截断似然），精准算出每个配置项到底吃多少 GiB 或省多少 GiB。</li>
+<li><strong>先验在线校准、精细失败归因与组合补全</strong>：针对 LLM 先验失准用经验贝叶斯收缩，对「被 LLM 低估或否决、但不确定性上界较高」的关键旋钮主动发起逆向试探（Contrarian Big-Knob Probing），用真实硬件测量实时修正先验（找回 +55% 编译加速与 +10.2% 通信优化）。失败时把 OOM、最小冲突配置元组（Minimal Conflict Tuple）、源码补丁报错严格分离归因——不因补丁写坏冤枉好参数，也不因单次 OOM 封杀高潜力开关，而是放进高潜力缓冲池做 Bundle Completion（组合补全）：自动从显存账本挑能覆盖实测 GiB 缺口的省显存旋钮配对重跑。</li>
+<li><strong>大旋钮信赖域跳出与源码补丁群试叠加</strong>：动态划出单点效应超噪声门限的高影响大旋钮集合 K_big，连续两轮陷入局部平台期就在 K_big 上扩大最小信赖域距离（强制多旋钮跳跃）并跨配置簇热重启；搜索后期把多个已验证的小收益源码补丁按群试（Group Testing）思想叠加组合。</li>
+</ul>
+
+<h2 id="jing-yan-qian-yi"><a href="#jing-yan-qian-yi" class="headerlink" title="贡献三：跨硬件经验迁移与双层 RSI 自进化闭环"></a>贡献三：跨硬件经验迁移与双层 RSI 自进化闭环</h2>
+<p>为什么一台集群的调优经验直接照搬到另一代 GPU 常翻车？跨 H20/H100/H200 的 191 个环境、698 条实测观测（论文 Table 3）发现，硬件跨算力-带宽 Roofline 拐点时，优化收益会显著压缩甚至正负号反转（Sign Flips）：算力受限的 H20（148 TF, 4.0 TB/s）上开 FP8 或 tp=2 能提速 +58%/+24%，但迁移到 Tensor Core 算力暴涨的 H100/H200（989 TF）后，GEMM 耗时大缩，量化转换开销与 TP AllReduce 通信反成主导，tp=2 和 FP8 Attention 反转为 -4% 和 -8% 的负优化。</p>
+<p>为此设计围绕 Environment（硬件 Roofline、互联拓扑、并行布局）— Observation（完整配置、步时、显存缺口、16 项校验结论）— Effect（成对加速比、噪声基线、条件依赖）的结构化经验协议，通过双层归一化器把不同框架的参数映射到 71 种规范化物理机制（区分算子型 Kernel 与拓扑敏感的均衡型 Balance），用兼容性作用域过滤与环境距离加权安全迁移历史先验。由此跑通真正的双层递归自我改进闭环：内层（单次任务内）用实时硬件测量修正失准的 LLM 先验与显存账本；外层（跨任务与跨硬件）把严格复验后的新发现蒸馏回经验库。</p>
+
+<h1 id="shi-ce-zhan-ji"><a href="#shi-ce-zhan-ji" class="headerlink" title="四、实测战绩"></a>四、实测战绩</h1>
+<p>在完全一致的任务契约与成本核算下（失败及审计剔除试验消耗的 Token 全额计入横轴），H100 与 H200 集群上四个代表性单机/多机、稠密/MoE 大模型训练任务：几何平均加速 1.83×（最高 2.75×），平均 MFU 从 17.4% 拉到 30.0%（稠密模型最高 45.4%）。最印象深刻的是 Gemma-4-26B-A4B MoE（8×H200）的 2.75× 突破——其它基准方法全卡在 1.29×–1.33× 的局部最优盆地；B-Comp 通过右截断显存账本识别出「关闭 Liger 可释放 14 GiB 显存并消除与 torch.compile 的死锁冲突」，解锁「关闭激活重算 + 图编译」三方协同，再自动合成为 25 个滑动窗口层缓存块稀疏掩码的编译版 FlexAttention 补丁及 5 个全局层的分块因果注意力算子，MFU 提升近三倍。</p>
+
+<h1 id="kuai-su-shang-shou"><a href="#kuai-su-shang-shou" class="headerlink" title="五、30 秒快速上手"></a>五、30 秒快速上手</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 1. 安装（Python 3.10+）</span><br><span class="line">git clone https://github.com/TokenRhythm/InfraRSI.git</span><br><span class="line">cd InfraRSI &amp;&amp; pip install -e .</span><br><span class="line"># 2. 一条命令启动，复用本机已登录的 Claude Code 或 Codex</span><br><span class="line">infrarsi optimize ./train.sh --llm claude-cli --screens 16</span><br><span class="line"># 3. 或接入 DeepSeek API + 自然语言约束</span><br><span class="line">export DEEPSEEK_API_KEY="your-key"</span><br><span class="line">infrarsi optimize ./train.sh \</span><br><span class="line">  --llm deepseek:deepseek-chat \</span><br><span class="line">  --requirements "不能改优化器" \</span><br><span class="line">  --budget-usd 10</span><br><span class="line"># 4. Skill 版本：在 Claude Code / Codex 会话里直接调用同一套引擎</span><br></pre></td></tr></table></figure>
+<p>除独立 Harness 外，仓库内额外提供 Skill 版本（<code>python agent_skill/install_skill.py</code> 安装），无需配置 API Key，在编码会话里直接对话即可调用同一套底层优化与校验引擎。从单次任务的自动调优，到跨任务、跨代际硬件集群的经验自进化，InfraRSI 在 AI Infra 智能化与 RSI 方向迈出了重要一步。五阶段分步运行、预算控制与经验包分享（<code>infrarsi exp</code>）的详细教程见官方博客与代码仓库。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>开源仓库：<a href="https://github.com/TokenRhythm/InfraRSI">github.com/TokenRhythm/InfraRSI</a></li>
+<li>官方博客与中文文档：<a href="https://infrarsi.github.io/?lang=zh">infrarsi.github.io</a></li>
+<li>技术报告：<a href="https://arxiv.org/abs/2611.11558">arXiv:2611.11558</a></li>
+<li>发布公告：<a href="https://mp.weixin.qq.com/s/SIo4Cx_fUFFMjbW5js1RUQ">基元律动（TokenRhythm）· 微信公众号</a></li>
+</ul>
+{% endraw %}

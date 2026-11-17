@@ -1,0 +1,64 @@
+---
+layout: "blog-post"
+post_id: "drex-decision-models"
+title: "Drex：走向基础决策模型——不生成文字，直接读出概率分布"
+description: "Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。"
+---
+{% raw %}
+<p>LLM 的自回归范式正在生产环境里露出疲态：答案不稳定、要解析输出文本、成本和延迟都压在关键路径上。Nace.AI（Nischay Dhankhar、Alisher Amantay、Zhanibek Datbayev）这篇技术报告给出了另一条路——<strong>决策模型</strong>（decision model）：给定一个状态和一组用户提供的选项，模型不做任何自回归解码，直接返回这组选项上的概率分布。最大型号 Drex Max 在真实数据决策上与前沿模型打平，单请求中位延迟 183ms，而 GPT-6 Sol 约 2 秒、Claude Opus 5.5 约 3.5 秒。四个模型全部开源。</p>
+<span id="more"></span>
+
+<h1 id="shen-me-shi-jue-ce-mo-xing"><a href="#shen-me-shi-jue-ce-mo-xing" class="headerlink" title="一、什么是决策模型"></a>一、什么是决策模型</h1>
+<p>把输入映射到固定集合的任务，历来有三种做法：编码器模型在最后层挂一个分类头；T5 把标签当字符串生成；解码器模型靠 prompt 让它吐出标签。这三种方案的共同点是<strong>输出形状在部署前就固定了</strong>——分类头在训练时定死标签，重排器每个候选返回一个数，嵌入模型每个输入返回一个向量。</p>
+<p>决策模型关心的是另一种设定：<strong>候选输出集合随输入变化</strong>。用户在请求里给定上下文（状态）、问题，以及这次要选的选项列表；模型对每个选项给出一个概率。自回归模型做这件事有两条路：要么 prompt 它生成答案再解析文本，要么用约束生成把解码限制在允许的字符串上。第二条路能保证输出合法，但模型并不是被训练来预测「选项集合上的分布」的，约束生成还要逐步重归一化，选项共享前缀或长度不同时，结果和模型对整个字符串的偏好并不一致；逐选项打分再加总归一，则每个选项都要跑一次前向。</p>
+<p>Drex 的做法是一种新的读出方式：<strong>选项集合在推理时由用户给出，模型对每个选项直接输出概率</strong>。这就是报告里说的 System One 接口——请求是一个元组 (S, I, {q_k})：S 是状态（文本或渲染成缩进文本的 JSON），I 是可选的图像集合，每个问题 q_k 带类型（choice 多选一、noul 是非题、score 有序量表打分）、指令和至多 255 个选项的有序列表。模型对每个问题返回一个概率分布 p_k。</p>
+
+<h2 id="yi-ge-jie-kou-si-ge-hun-shi"><a href="#yi-ge-jie-kou-si-ge-hun-shi" class="headerlink" title="一个接口，四个基座"></a>一个接口，四个基座</h2>
+<p>Drex 家族有四个模型，共享同一个接口和同一份训练数据底座，但分别建在四种完全不同的基座上：</p>
+<table><thead><tr><th>模型</th><th>参数量</th><th>基座</th><th>读出方式</th></tr></thead><tbody><tr><td>Drex DLM</td><td>8B</td><td>扩散语言模型，状态段内双向注意力</td><td>指针头（pointer head）</td></tr><tr><td>Drex v1.5</td><td>9B</td><td>Gated DeltaNet 混合模型</td><td>指针头</td></tr><tr><td>Drex v2.0</td><td>35B（激活 3B）</td><td>稀疏 MoE（Qwen3.6-35B-A3B）</td><td>指针头</td></tr><tr><td>Drex Max</td><td>27B</td><td>稠密多模态（Qwen3.8-27B）</td><td>读出头（readout head）</td></tr></tbody></table>
+<p>三个指针模型（DLM、v1.5、v2.0）把上下文<strong>编码一次</strong>，在所有问题间共享这份编码，降低成本和延迟；Drex Max 则对每个问题重新编码上下文，用稠密多模态基座加双向注意力换取更高精度。这是整篇报告的核心对照。</p>
+
+<h1 id="chuang-xin-dian"><a href="#chuang-xin-dian" class="headerlink" title="二、创新点"></a>二、创新点</h1>
+<h2 id="zhi-zhen-jia-gou"><a href="#zhi-zhen-jia-gou" class="headerlink" title="指针架构：上下文编码一次，所有问题共享"></a>指针架构：上下文编码一次，所有问题共享</h2>
+<p>请求被打包成一条 token 序列：状态段 S 之后接每个问题一个 question block（指令、选项、一个 <code>&lt;decide&gt;</code> 收尾 token，每个选项用 <code>&lt;opt&gt;...</code></opt> 标签围住）。注意力掩码是 block-causal：问题块内的 token 能看状态的全部 token 和自身块内前序 token，但<strong>看不到其它问题块</strong>。于是 p_k 只依赖状态和问题 k，与同请求里其它问题怎么排、怎么增删无关，状态编码还能缓存复用。</p>
+<p>指针头本身极小：取 <code>&lt;decide&gt;</code> 处的隐状态经 W_q 得到查询 q，取每个 <code>&lt;/opt&gt;</code> 处的隐状态经 W_k 得到键 k_j，打分是缩放点积 z_{k,j} = k_j^T q / √d_p，softmax 之后就是该问题的选项分布。d_p = 256，v1.5（d=4096）整个指针头只有 210 万参数，v2.0（d=2048）只有 100 万，不到基座的 0.03%。三个选项的问题和 150 个选项的问题用同一个头，训练时没见过的选项也走同一套打分机制。推理时<strong>不需要任何解码</strong>。</p>
+
+<h2 id="rlaf"><a href="#rlaf" class="headerlink" title="RLAF：用恰当评分规则做奖励"></a>RLAF：用恰当评分规则做奖励</h2>
+<p>监督训练的标签是 one-hot，诚实的答案其实往往有不确定性，one-hot 会训练出过度自信。RLAF（reinforcement learning from adjusted feedback）的做法是给每个问题构造一个<strong>调整后的目标分布 q̃</strong>：先由教师模型给出选项分布，再用已验证的结果 y*（金标、执行结果或游戏引擎输出）去调整，使目标分布与已知事实一致，同时保留教师在其余选项上的不确定性。奖励是一个恰当评分规则（proper scoring rule）——当结果从 q̃ 采样时，期望奖励在 p = q̃ 处取最大。报告用的是对数似然加球面距离项，score 问题再减去平方 Cramér 距离（即 ranked probability score）。</p>
+<p>因为每一项都是恰当评分规则，期望奖励恰好在 p = q̃ 处最大，所以<strong>准确性与校准被同时激励，而不是互相牺牲</strong>。优化用直接求导完成，本质上是对软目标的确定性损失函数，「强化」体现在 q̃ 的构造方式上。作者也试过 REINFORCE 估计梯度，没有胜过直接求导。</p>
+<p>Drex Max 用的是带 KL 正则的变体：奖励 = 验证结果命中项（ρ·1[a=y*]）+ 裁判对数概率（η·log q^J_a），再减去 β·KL(π_θ ‖ π_0)，π_0 是冻结的 SFT 模型，裁判是 Max 自己基座的生成式形态（同请求做长思维链推理后给出分布），不是更强的模型。裁判的作用是提供一个可以长推理的第二意见，贡献第二分布。消融显示 RLAF 给 Decision Index 带来 +2.0 分、准确率 +1.5 个百分点、ECE 降 0.9 个百分点。</p>
+
+<h2 id="yi-zhi-xing-sun-shi"><a href="#yi-zhi-xing-sun-shi" class="headerlink" title="一致性损失项：翻转率从 6.3% 压到 4.2%"></a>一致性损失项：翻转率从 6.3% 压到 4.2%</h2>
+<p>指针架构能保证「选项的 key 和选项内容绑定」，但读出头的 Max 不是——选项只靠前缀码（A、B、…）标识，置换选项就改变了哪个 logit 对应哪个选项，顺序鲁棒性完全靠学。所以 SFT 损失里加了两个一致性正则项：</p>
+<ul><li>置换一致性 ℓ_π：对选项做随机置换，惩罚预测分布的对称 KL 变化，逼模型对选项排列不变。</li><li>状态打乱一致性 ℓ_s：把状态的句子或字段打乱后，惩罚分布变化（stop-gradient 一侧），逼答案不依赖状态的呈现方式。</li></ul>
+<p>消融很直接：去掉这两项，Decision Index 分数几乎不变（66.4 vs 66.9），但翻转率（选项顺序改变导致 argmax 改变的决策占比）从 4.2% 升到 6.3%。一致性项不改变准确率，只改鲁棒性。</p>
+
+<h2 id="drex-max"><a href="#drex-max" class="headerlink" title="Drex Max：双向注意力 + 读出头 + 图像编码器"></a>Drex Max：双向注意力 + 读出头 + 图像编码器</h2>
+<p>Max 的基座是 Qwen3.8-27B：64 层，48 层 Gated DeltaNet + 16 层全注意力（每第 4 层一个）。关键改动是<strong>只在这 16 层全注意力层上去掉因果掩码</strong>：DeltaNet 层保持左到右的信息流（4 层里有 3 层），全注意力层里早期 token（状态、选项列表开头）能注意到后续所有 token（选项、指令）。训练出的权重只在用了这个掩码的前向里才给出正确分数——同一套权重走原始因果掩码复算不出同样的打分。</p>
+<p>每个问题被编码成一条独立序列：图像 token（ViT 编码后拼在状态前面）→ 状态 → 指令 → 选项（每个选项写成「码: 选项文本」，A、B、…、AA 都是单 token 码）→ 收尾 token <code>&lt;ans&gt;</code>。读出头是一个无偏置线性层 W_r ∈ ℝ^(255×5120)，把 <code>&lt;ans&gt;</code> 处的最终隐状态映到 255 个 logit（每个选项码一个），保留前 K 个做 softmax 就是选项分布。约 130 万参数，和指针头同量级。温度 T = 1.009，在最后一个训练阶段后用留出集拟合，几乎不改变概率。</p>
+<p>代价是状态不再可缓存——全注意力层非因果，状态的表示依赖具体问题，每个问题都要重新编码状态。短上下文下差别不大（发布时单请求中位延迟：Max 183ms vs v2.0 151ms vs v1.5 145ms），但长文档多问题时指针模型仍然便宜得多。</p>
+
+<h1 id="fang-fa-lun"><a href="#fang-fa-lun" class="headerlink" title="三、方法论：从训练到部署"></a>三、方法论：从训练到部署</h1>
+<h2 id="san-jie-duan-xun-lian"><a href="#san-jie-duan-xun-lian" class="headerlink" title="三段训练管线"></a>三段训练管线</h2>
+<p>Max 的训练是三段式。第一段 SFT：全量微调基座加随机初始化的读出头，损失 = 交叉熵（teacher 分布可用则用软标签）+ 平方 Cramér 距离（score 问题）+ 两个一致性项；每个 choice 问题（K≥3）每次看到都打乱选项，随机比例混入「none」或干扰选项，让模型学会「没有合适的选项就不硬选」。v1.5 的第一段更新基座全部权重加指针头。第二段是 Max 专属的 KL-regularized RLAF。第三段训练图像编码器和它到语言模型的投影，教模型从图像做决策。训练数据 1,150,460 条已验证的文本决策记录，横跨 11 个领域，大部分由更强的教师蒸馏，其余来自开源数据集和可验证的程序化数据（执行过的程序、游戏引擎输出），每条标签都对着金标、执行结果或引擎校验过。决策类 benchmark 的样本全部排除，还按「状态精确匹配或共享两条以上 8-词序列」做了污染过滤。</p>
+
+<h2 id="jiao-zhun"><a href="#jiao-zhun" class="headerlink" title="校准：ECE 从 1.4–4.5% 到 0.8–1.4%"></a>校准：ECE 从 1.4–4.5% 到 0.8–1.4%</h2>
+<p>每个模型在最终 softmax 前对 logits 施加一个温度。v1.5、v2.0 出厂温度 T=1（不做温度缩放），Max 是 1.009。在约 23 万条决策上测校准：部署温度下 ECE 为 1.4–4.5%，在 Decision Index 样本上重新拟合温度后降到 0.8–1.4%。但分领域、多选项问题上的 ECE 仍偏高，所以单一温度参数不能替代对每个负载的校准监控——置信度阈值能当路由规则用，但前提是知道它在你那个负载上偏多少。</p>
+
+<h2 id="shu-shi-you-hua"><a href="#shu-shi-you-hua" class="headerlink" title="没有解码循环的部署优化"></a>没有解码循环的部署优化</h2>
+<p>决策模型的推理和语言模型根本不同：没有 decode loop，整个请求落在一次 compute-heavy 的 prefill 里，状态编码一次、所有问题共享。这带来它自己的难点——短请求被 kernel launch 开销主导，长状态吃爆显存，延迟预算紧（决策模型通常挂在另一个系统的请求路径上）。报告里的优化：共享 prefill（8k token 状态、16 个问题、8 并发客户端下吞吐提升 10 倍）、按形状桶录制的 CUDA Graph（把基座和指针头一起录进一张图，单次 launch 重放），以及内核级改动。所有优化按「精确（位级一致）/近似」分类，近似类要单独验证。最终 Max 单请求中位延迟 183ms，每 1000 条决策 $0.06。</p>
+
+<h1 id="jie-guo"><a href="#jie-guo" class="headerlink" title="四、结果"></a>四、结果</h1>
+<p>Decision Index 0.4.1（37 个公开 benchmark，按五个领域加权）：Max 公开套 67.52，全分（含私有子集）66.60，是所对比决策模型中的新纪录，Jev 1.14.0 公开套 60.70。Artificial Analysis 独立跑的 Decision Index 上，Max 在决策模型里第二（64 vs 前三的 65）。Decision Bench v4 上，Max 通过图像编码器直接吃图时准确率 94.0%，与 GPT-6 Sol、d3-turbo 统计上无差异，比 Claude Opus 5.5 低 1.6 个百分点；DecideBench 上决策模型里最高，JevBench-231 上与最强模型相当。Max 在知识领域领先指针模型，但在闭卷知识测试上整体仍落后前沿聊天模型——报告把知识密集型查询路由到其它系统列为后续方向。</p>
+<p>消融（Table 7，同一基座、同一训练数据）：SFT only 64.9 → SFT+RLAF（无一致性项）66.4 → SFT+RLAF（含一致性项）66.9 → 加视觉 SFT 66.8。视觉 SFT 段对文本输入无损（66.9→66.8），对纯图像问题把 Decision Bench 60 个图像题的准确率从 63.3% 拉到 98.3%。</p>
+<p>对做训练基础设施优化的读者，这篇报告里有两个可迁移的点：一是「恰当评分规则做奖励 + KL 正则到参考策略」这个 RLAF 配方，比 GRPO 类的可验证奖励更适合校准敏感的任务；二是把顺序鲁棒性做成显式的损失项而不是事后测量——如果模型要在生产里被选项排列「打乱」，训练时就该惩罚它。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<ul>
+<li>论文：<a href="https://arxiv.org/abs/2611.07854">Towards Foundation Decision Models: Drex</a>（arXiv:2611.07854v1，2026-11-05）</li>
+<li>模型与推理代码：<a href="https://github.com/nace-ai/drex-decision-models">github.com/nace-ai/drex-decision-models</a>（Max/v2.0/v1.5：Nace.AI Open RAIL-M；DLM：CC BY-NC 4.0；代码：Apache-2.0）</li>
+<li>System One 接口来源：<a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Introducing System One models and Jev</a></li>
+<li>指针模型基座：<a href="https://github.com/kevinm3/kev">open Kev 代码库</a>；Max 的注意力与读出设计沿用 <a href="https://github.com/pplx-decider">pplx-decider</a></li>
+<li>Decision Index 排行榜：<a href="https://decisionindex.ai">decisionindex.ai</a>；Decision Bench：<a href="https://arxiv.org/abs/2505.11838">Decision Bench</a></li>
+</ul>
+{% endraw %}

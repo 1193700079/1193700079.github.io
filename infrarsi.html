@@ -7,6 +7,10 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 {% raw %}
 <p>Scaling Law 越来越卡在算力集群的真实吞吐上。<a href="/llm-accel-panorama.html">大模型加速优化全景图</a>把训练加速划成独立板块，InfraRSI 则是其中「自动化」维度的一个完整样本。过去一年递归自我改进（RSI）和自主编程智能体在单点算法发现、孤立 CUDA/Triton Kernel 生成上进展很快，但一线大模型训练仓库里，启动配置、算子实现、图编译、多机集合通信是咬在一起的——放任通用 Coding Agent 下场改代码，要么频繁撞 OOM 显存墙和编译器死锁，要么为了刷吞吐搞出缩减有效 Batch、挪动计时器起点的「虚假加速」。基元律动（TokenRhythm）联合无问芯穹、北大、上交、清华发布的 <strong>InfraRSI</strong> 就是冲着这个缺口来的：首个面向大模型分布式训练基础设施的递归自我改进 Agent Harness，同步公开技术报告（arXiv: 2611.11558），全部开源。</p>
 <span id="more"></span>
+<figure>
+  <img src="/assets/infrarsi/hero.png" alt="一个中央 AI 决策节点通过环形闭环箭头连接四个 GPU 集群模块，表示训练基础设施的递归自我改进循环，深蓝色与青色渐变插画" width="1200" height="630" fetchpriority="high" decoding="async">
+  <figcaption>概念示意：一条命令触发「假设生成 → 16 项校验 → 经验沉淀」的闭环，训练基础设施像算法一样自我进化。</figcaption>
+</figure>
 <blockquote>
 <p><strong>核心要点</strong></p>
 <ul>
@@ -19,6 +23,10 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 
 <h1 id="ta-shi-shen-me"><a href="#ta-shi-shen-me" class="headerlink" title="一、它是什么"></a>一、它是什么</h1>
 <p>InfraRSI 的定位是一行命令端到端自进化。把手头的 <code>train.sh</code>、<code>train.py</code> 或整个代码仓交给它，它自动串起五个阶段：<code>init → doctor → run → report → apply</code>。不需要重构现有训练工程——它严格只改你允许改的文件。最终产出是一个可直接投产的 <code>infrarsi_optimized.sh</code>。</p>
+<figure>
+  <img src="/assets/infrarsi/wechat-2.gif" alt="InfraRSI 一条命令端到端自进化演示：在 Gemma-4-26B-A4B MoE 上自动完成基线剖析、启动参数与源码补丁协同搜索、突破显存墙与编译冲突，实现 2.75× 加速" width="1080" height="660" loading="lazy">
+  <figcaption>一条命令的端到端自进化演示（官方动图）：Gemma-4-26B-A4B MoE 在 8×H200 上 2.75× 加速的搜索轨迹。</figcaption>
+</figure>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">infrarsi optimize ./train.sh</span><br></pre></td></tr></table></figure>
 <p>它同时搜索两类东西：<strong>启动参数/环境变量/配置项</strong>和<strong>允许修改的源码补丁</strong>。后者包括融合归一化/RoPE/SwiGLU 算子、编译块稀疏 FlexAttention、分桶梯度范数通信，并自动把「高收益但耗显存」的配置与「省显存」开关配对。这就是它和传统自动调参器（只动命令行开关）的本质区别——纯调参很快会撞上算子与访存瓶颈，而 InfraRSI 把参数空间和代码空间放在同一个搜索里。融合归一化/RoPE/SwiGLU 这类算子手写融合正是<a href="/qwen-sft-6x.html">Databricks 那篇 Qwen 微调提速 6 倍</a>里的同一套路——手动融合内核对大模型训练收益显著，InfraRSI 把它从「人写一个内核」推广成「Agent 自动发现并验证一组内核」。
 
@@ -31,37 +39,7 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 <li><strong>严苛校验</strong>：5 层 16 项 Harness 强校验，每个候选必须保证训练负载/数据/参数/优化器步数不变、Loss 偏差在容差内（默认 3%），胜出者还要过与基线背靠背的同卡复测。可选双模型交叉把关（如 <code>--llm codex-cli --second-llm claude-cli</code>）：两个模型独立提案、匿名盲评、代码补丁上 GPU 前做两轮交叉 Code Review。</li>
 <li><strong>越用越强</strong>：验证过的运行沉淀为结构化经验包写回本地/团队共享经验库。换全新 GPU 型号时，历史经验仍能热启动——Qwen3.5-9B（8×H100）上仅凭其它型号积累的经验，加速比从冷启动 1.70× 提到 1.82×，第 9 次试验（2.97 GPU·h）就触及 90% 峰值，冷启动预算耗尽都没到。</li>
 </ul>
-<figure class="blog-chart">
-<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="infrarsi-speedup-title infrarsi-speedup-desc">
-  <style>
-    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
-    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-  </style>
-  <title id="infrarsi-speedup-title">几何平均加速比（×）</title>
-  <desc id="infrarsi-speedup-desc">几何平均加速比（×）. horizontal bar data: InfraRSI 1.83; METR RE-Bench 1.37; Auto-Research 1.34; OptiCo（纯调参） 1.23. Source: InfraRSI 技术报告.</desc>
-  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">几何平均加速比（×）</text>
-  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">H100/H200 四大训练负载，成本核算含失败试验消耗</tspan></text>
-  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08" />
-<text x="136.0" y="109.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">InfraRSI</tspan></text>
-<rect x="145" y="78.0" width="365.0" height="49.0" rx="4" fill="#f97316" />
-<text x="518.0" y="109.8" font-size="11" fill="currentColor">1.83</text>
-<text x="136.0" y="166.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">METR RE-Bench</tspan></text>
-<rect x="145" y="135.0" width="273.3" height="49.0" rx="4" fill="#38bdf8" />
-<text x="426.3" y="166.8" font-size="11" fill="currentColor">1.37</text>
-<text x="136.0" y="223.8" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">Auto-Research</tspan></text>
-<rect x="145" y="192.0" width="267.3" height="49.0" rx="4" fill="#a78bfa" />
-<text x="420.3" y="223.8" font-size="11" fill="currentColor">1.34</text>
-<text x="136.0" y="280.9" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">OptiCo（纯调参）</tspan></text>
-<rect x="145" y="249.0" width="245.3" height="49.0" rx="4" fill="#22c55e" />
-<text x="398.3" y="280.9" font-size="11" fill="currentColor">1.23</text>
-  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: InfraRSI 技术报告</text>
-</svg>
-<figcaption>Source: <a href="https://arxiv.org/abs/2611.11558">InfraRSI 技术报告</a>.</figcaption>
-</figure>
+
 
 <h1 id="si-da-fan-chuan"><a href="#si-da-fan-chuan" class="headerlink" title="二、直接拿 Coding Agent 调训练为什么翻车"></a>二、直接拿 Coding Agent 调训练为什么翻车</h1>
 <p>作者系统复盘了大量真实分布式训练优化轨迹，总结出四类典型失效：</p>
@@ -83,6 +61,10 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 <li><strong>report</strong> 产出优化报告与成本账本。</li>
 <li><strong>apply</strong> 落地为可投产脚本。</li>
 </ul>
+<figure>
+  <img src="/assets/infrarsi/wechat-4.png" alt="InfraRSI 五阶段闭环工作流：init、doctor、run、report、apply 串联，B-Comp 预算内组合搜索，以及内层搜索内学习与外层经验库的双层 RSI 自进化闭环" width="938" height="516" loading="lazy">
+  <figcaption>五阶段闭环工作流与双层 RSI 自进化架构（官方图）：内层在单次任务内用硬件测量修正先验，外层把复验后的发现蒸馏回经验库。</figcaption>
+</figure>
 <p>校验是 5 层 16 项确定性不变量加源码路径审计：从执行与显存上限（L1）、负载/数据/模型摘要一致性（L2）、计时窗口内同步优化器步数（L3）、预声明 Loss 与梯度数值容差（L4），到框架内外双时钟一致性与同卡背靠背复测（L5），配合 HMAC-SHA256 防篡改运行回执和候选源码路径审计（Source-Path Audit）。所有失败或被审查剔除的候选消耗的 GPU 时与 Token 全部计入成本账本，杜绝幸存者偏差。审计实证：28 类作弊/篡改扰动加 12 类合法对照的公开校验器压力测试 40/40 全对；对 1,212 次真实历史运行离线复核筛除 400 次（33.0%）无效候选，其中 39 次表面正常跑完，全靠 L4 数值校验层揪出隐蔽的 Loss 漂移。</p>
 
 <h2 id="b-comp"><a href="#b-comp" class="headerlink" title="贡献二：预算受限组合搜索控制器 B-Comp"></a>贡献二：预算受限组合搜索控制器 B-Comp</h2>
@@ -99,34 +81,15 @@ description: "基元律动联合无问芯穹与北大、上交、清华开源 In
 
 <h1 id="shi-ce-zhan-ji"><a href="#shi-ce-zhan-ji" class="headerlink" title="四、实测战绩"></a>四、实测战绩</h1>
 <p>在完全一致的任务契约与成本核算下（失败及审计剔除试验消耗的 Token 全额计入横轴），H100 与 H200 集群上四个代表性单机/多机、稠密/MoE 大模型训练任务：几何平均加速 1.83×（最高 2.75×），平均 MFU 从 17.4% 拉到 30.0%（稠密模型最高 45.4%）。最印象深刻的是 Gemma-4-26B-A4B MoE（8×H200）的 2.75× 突破——其它基准方法全卡在 1.29×–1.33× 的局部最优盆地；B-Comp 通过右截断显存账本识别出「关闭 Liger 可释放 14 GiB 显存并消除与 torch.compile 的死锁冲突」，解锁「关闭激活重算 + 图编译」三方协同，再自动合成为 25 个滑动窗口层缓存块稀疏掩码的编译版 FlexAttention 补丁及 5 个全局层的分块因果注意力算子，MFU 提升近三倍。</p>
-<figure class="blog-chart">
-<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="infrarsi-mfu-title infrarsi-mfu-desc">
-  <style>
-    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
-    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-  </style>
-  <title id="infrarsi-mfu-title">模型算力利用率 MFU（%）</title>
-  <desc id="infrarsi-mfu-desc">模型算力利用率 MFU（%）. horizontal bar data: 优化前平均 17.4; 优化后平均 30; 稠密模型最高 45.4. Source: InfraRSI 技术报告.</desc>
-  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">模型算力利用率 MFU（%）</text>
-  <text x="280.0" y="48.0" text-anchor="middle" font-size="12" fill="var(--chart-muted, currentColor)"><tspan x="280.0" dy="0">按每卡 989.5 TFLOP/s 非稀疏 BF16 峰值折算</tspan></text>
-  <line x1="145" y1="298.0" x2="510" y2="298.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="243.0" x2="510" y2="243.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="188.0" x2="510" y2="188.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="133.0" x2="510" y2="133.0" stroke="currentColor" opacity="0.08" />
-<line x1="145" y1="78.0" x2="510" y2="78.0" stroke="currentColor" opacity="0.08" />
-<text x="136.0" y="122.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">优化前平均</tspan></text>
-<rect x="145" y="78.0" width="139.9" height="68.0" rx="4" fill="#f97316" />
-<text x="292.9" y="122.2" font-size="11" fill="currentColor">17.4</text>
-<text x="136.0" y="198.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">优化后平均</tspan></text>
-<rect x="145" y="154.0" width="241.2" height="68.0" rx="4" fill="#38bdf8" />
-<text x="394.2" y="198.2" font-size="11" fill="currentColor">30</text>
-<text x="136.0" y="274.2" text-anchor="end" font-size="11" fill="currentColor" opacity="0.8"><tspan x="136.0" dy="0">稠密模型最高</tspan></text>
-<rect x="145" y="230.0" width="365.0" height="68.0" rx="4" fill="#a78bfa" />
-<text x="518.0" y="274.2" font-size="11" fill="currentColor">45.4</text>
-  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: InfraRSI 技术报告</text>
-</svg>
-<figcaption>Source: InfraRSI 技术报告.</figcaption>
+<figure>
+  <img src="/assets/infrarsi/wechat-5.jpg" alt="InfraRSI 与三个基线在 Qwen3.5-9B 上的对比：搜索轨迹、收敛后加速比、训练 MFU 三联图" width="762" height="210" loading="lazy">
+  <figcaption>官方对比三联图：左为搜索轨迹，中为收敛后加速比，右为训练 MFU。</figcaption>
 </figure>
+<figure>
+  <img src="/assets/infrarsi/wechat-6.png" alt="四大分布式训练负载实测总览，含基线 MFU、RE-Bench、Auto-Research、OptiCo、InfraRSI 的加速比与自动发现的参数加代码组合" width="1080" height="493" loading="lazy">
+  <figcaption>四大负载实测总览（官方图）：基线 MFU、各方法加速比与自动发现的配置组合。InfraRSI 在 Gemma-4-26B-A4B MoE 上以 2.75× 领跑，平均 MFU 从 17.4% 拉到 30.0%。</figcaption>
+</figure>
+
 
 <h1 id="kuai-su-shang-shou"><a href="#kuai-su-shang-shou" class="headerlink" title="五、30 秒快速上手"></a>五、30 秒快速上手</h1>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 1. 安装（Python 3.10+）</span><br><span class="line">git clone https://github.com/TokenRhythm/InfraRSI.git</span><br><span class="line">cd InfraRSI &amp;&amp; pip install -e .</span><br><span class="line"># 2. 一条命令启动，复用本机已登录的 Claude Code 或 Codex</span><br><span class="line">infrarsi optimize ./train.sh --llm claude-cli --screens 16</span><br><span class="line"># 3. 或接入 DeepSeek API + 自然语言约束</span><br><span class="line">export DEEPSEEK_API_KEY="your-key"</span><br><span class="line">infrarsi optimize ./train.sh \</span><br><span class="line">  --llm deepseek:deepseek-chat \</span><br><span class="line">  --requirements "不能改优化器" \</span><br><span class="line">  --budget-usd 10</span><br><span class="line"># 4. Skill 版本：在 Claude Code / Codex 会话里直接调用同一套引擎</span><br></pre></td></tr></table></figure>

@@ -7,6 +7,10 @@ description: "Nace.AI 开源了四个决策模型：用户给定选项集，模�
 {% raw %}
 <p>LLM 的自回归范式正在生产环境里露出疲态：答案不稳定、要解析输出文本、成本和延迟都压在关键路径上。Nace.AI（Nischay Dhankhar、Alisher Amantay、Zhanibek Datbayev）这篇技术报告给出了另一条路——<strong>决策模型</strong>（decision model）：给定一个状态和一组用户提供的选项，模型不做任何自回归解码，直接返回这组选项上的概率分布。最大型号 Drex Max 在真实数据决策上与前沿模型打平，单请求中位延迟 183ms，而 GPT-6 Sol 约 2 秒、Claude Opus 5.5 约 3.5 秒。四个模型全部开源。<a href="/llm-accel-panorama.html">大模型加速优化全景图</a>里梳理了训练加速与推理加速的八大板块，决策模型是这条线上「输出形态」维度的一个极端样本。</p>
 <span id="more"></span>
+<figure>
+  <img src="/assets/drex-decision-models/hero.png" alt="一个中心决策节点向多个选项发出扇形概率分布，每个选项光点的概率不同，抽象深蓝紫渐变插画" width="1200" height="630" fetchpriority="high" decoding="async">
+  <figcaption>概念示意：一个输入状态，直接读出对一组选项的概率分布，不生成文字。</figcaption>
+</figure>
 <blockquote>
 <p><strong>核心要点</strong></p>
 <ul>
@@ -26,11 +30,19 @@ description: "Nace.AI 开源了四个决策模型：用户给定选项集，模�
 <p>Drex 家族有四个模型，共享同一个接口和同一份训练数据底座，但分别建在四种完全不同的基座上：</p>
 <table><thead><tr><th>模型</th><th>参数量</th><th>基座</th><th>读出方式</th></tr></thead><tbody><tr><td>Drex DLM</td><td>8B</td><td>扩散语言模型，状态段内双向注意力</td><td>指针头（pointer head）</td></tr><tr><td>Drex v1.5</td><td>9B</td><td>Gated DeltaNet 混合模型</td><td>指针头</td></tr><tr><td>Drex v2.0</td><td>35B（激活 3B）</td><td>稀疏 MoE（Qwen3.6-35B-A3B）</td><td>指针头</td></tr><tr><td>Drex Max</td><td>27B</td><td>稠密多模态（Qwen3.8-27B）</td><td>读出头（readout head）</td></tr></tbody></table>
 <p>三个指针模型（DLM、v1.5、v2.0）把上下文<strong>编码一次</strong>，在所有问题间共享这份编码，降低成本和延迟；Drex Max 则对每个问题重新编码上下文，用稠密多模态基座加双向注意力换取更高精度。这是整篇报告的核心对照。</p>
+<figure>
+  <img src="/assets/drex-decision-models/drex-pointer-vs-readout.svg" alt="两种选项打分方式对比：指针模型用一个序列编码状态和所有问题，问题块互不可见、状态缓存共享；Drex Max 把每个问题编码为独立序列，图像 token 加状态加指令加选项加 ans 标记，全注意力层双向注意，读出头映射到 255 个选项码的 logit" width="100%" loading="lazy">
+  <figcaption>论文图 2：两种打分方式。指针模型用共享缓存换低成本；Max 用双向注意力与读出头换更高精度，代价是状态不可缓存。</figcaption>
+</figure>
 
 <h1 id="chuang-xin-dian"><a href="#chuang-xin-dian" class="headerlink" title="二、创新点"></a>二、创新点</h1>
 <h2 id="zhi-zhen-jia-gou"><a href="#zhi-zhen-jia-gou" class="headerlink" title="指针架构：上下文编码一次，所有问题共享"></a>指针架构：上下文编码一次，所有问题共享</h2>
 <p>请求被打包成一条 token 序列：状态段 S 之后接每个问题一个 question block（指令、选项、一个 <code>&lt;decide&gt;</code> 收尾 token，每个选项用 <code>&lt;opt&gt;...&lt;/opt&gt;</code> 标签围住）。注意力掩码是 block-causal：问题块内的 token 能看状态的全部 token 和自身块内前序 token，但<strong>看不到其它问题块</strong>。于是 p_k 只依赖状态和问题 k，与同请求里其它问题怎么排、怎么增删无关，状态编码还能缓存复用。</p>
 <p>指针头本身极小：取 <code>&lt;decide&gt;</code> 处的隐状态经 W_q 得到查询 q，取每个 <code>&lt;/opt&gt;</code> 处的隐状态经 W_k 得到键 k_j，打分是缩放点积 z_{k,j} = k_j^T q / √d_p，softmax 之后就是该问题的选项分布。d_p = 256，v1.5（d=4096）整个指针头只有 210 万参数，v2.0（d=2048）只有 100 万，不到基座的 0.03%。三个选项的问题和 150 个选项的问题用同一个头，训练时没见过的选项也走同一套打分机制。推理时<strong>不需要任何解码</strong>。</p>
+<figure>
+  <img src="/assets/drex-decision-models/drex-pointer-architecture.svg" alt="Drex 指针架构：状态段 S 后接多个问题块，block-causal 掩码下问题块可看状态但互不可见，指针头在 decide 与 opt 标记间做缩放点积，一次 softmax 输出选项分布" width="100%" loading="lazy">
+  <figcaption>论文图 1：Drex 指针架构（DLM、v1.5、v2.0）。状态编码一次、缓存复用，指针头只占基座 0.03% 参数。</figcaption>
+</figure>
 <p>v1.5 与 v2.0 的基座是 Gated DeltaNet 混合模型——线性注意力与全局注意力层交错。线性注意力把上下文压成固定大小的递归状态，省显存但状态更新是推理瓶颈，<a href="/leapquant.html">递归态量化（LeapQuant）</a>那条线上的工作正好和它互补。</p>
 
 <h2 id="rlaf"><a href="#rlaf" class="headerlink" title="RLAF：用恰当评分规则做奖励"></a>RLAF：用恰当评分规则做奖励</h2>

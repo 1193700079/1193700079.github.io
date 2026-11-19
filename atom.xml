@@ -11,6 +11,16 @@
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
+    <title>Duo：一个全双工交互的互惠世界模型</title>
+    <link href="https://1193700079.github.io/duo-rwm.html"/>
+    <id>https://1193700079.github.io/duo-rwm.html</id>
+    <published>2026-11-19T11:00:00.000Z</published>
+    <updated>2026-11-19T11:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;inclusionAI 的 Duo v1 把「智能」从世界模型的输入侧挪到世界内部：一个全双工世界模型，一边持续感知音视频，一边实时回应。意图模块（Qwen3-VL + LoRA）每 17 帧 chunk 决定说还是等，把 hidden states 而不是文本传给因果音视频扩散实现模块。三阶段训练，核心是双 rollout 蒸馏到四步流式生成器。8 GPU 流式管线：统一 KV 管理、chunk 级重叠、设备感知并行。30 案例 × 6 标准 180 项检查过 168（93.3%），生成保真度最强，内容响应 73.3% 是下一版重点。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时</title>
     <link href="https://1193700079.github.io/rsi-self-evolution.html"/>
     <id>https://1193700079.github.io/rsi-self-evolution.html</id>

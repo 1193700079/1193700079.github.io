@@ -71,6 +71,166 @@
       "body_sha256": "150f9ac016240862c698317830089828c0e4e787e2725d3a1e41db04bcecfd30"
     },
     {
+      "id": "duo-rwm",
+      "url": "/duo-rwm.html",
+      "title": "Duo：一个全双工交互的互惠世界模型",
+      "date": "2026-11-19T11:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "inclusionAI 的 Duo v1 把「智能」从世界模型的输入侧挪到世界内部：一个全双工世界模型，一边持续感知音视频，一边实时回应。意图模块（Qwen3-VL + LoRA）每 17 帧 chunk 决定说还是等，把 hidden states 而不是文本传给因果音视频扩散实现模块。三阶段训练，核心是双 rollout 蒸馏到四步流式生成器。8 GPU 流式管线：统一 KV 管理、chunk 级重叠、设备感知并行。30 案例 × 6 标准 180 项检查过 168（93.3%），生成保真度最强，内容响应 73.3% 是下一版重点。",
+      "minutes": 14,
+      "toc": [
+        {
+          "id": "yi-bei-jing-ba-zhi-neng-nuo-jin-shi-jie-nei-bu",
+          "title": "一、背景：把「智能」挪进世界内部",
+          "level": 1
+        },
+        {
+          "id": "er-i-n-t-e-n-t-mo-kuai-yin-guo-de-c-h-u-n-k-shi-jiao-hu",
+          "title": "二、Intent 模块：因果的 chunk 式交互",
+          "level": 1
+        },
+        {
+          "id": "yin-guo-shu-ru-zu-zhuang",
+          "title": "因果输入组装",
+          "level": 2
+        },
+        {
+          "id": "yin-guo-shi-jue-bian-ma",
+          "title": "因果视觉编码",
+          "level": 2
+        },
+        {
+          "id": "a-c-t-i-o-n-a-w-a-r-e-r-e-b-a-l-a-n-c-i-n-g",
+          "title": "Action-aware rebalancing",
+          "level": 2
+        },
+        {
+          "id": "san-v-a-e-he-r-e-a-l-i-z-a-t-i-o-n-mo-kuai",
+          "title": "三、VAE 和 Realization 模块",
+          "level": 1
+        },
+        {
+          "id": "v-a-e",
+          "title": "VAE",
+          "level": 2
+        },
+        {
+          "id": "r-e-a-l-i-z-a-t-i-o-n-yin-guo-yin-shi-pin-lian-he-kuo-san",
+          "title": "Realization：因果音视频联合扩散",
+          "level": 2
+        },
+        {
+          "id": "zhu-yi-li-yan-ma",
+          "title": "注意力掩码",
+          "level": 2
+        },
+        {
+          "id": "si-san-jie-duan-xun-lian",
+          "title": "四、三阶段训练",
+          "level": 1
+        },
+        {
+          "id": "s-t-a-g-e-1-yi-tu-xun-lian",
+          "title": "Stage 1：意图训练",
+          "level": 2
+        },
+        {
+          "id": "s-t-a-g-e-2-r-e-a-l-i-z-a-t-i-o-n-xun-lian",
+          "title": "Stage 2：Realization 训练",
+          "level": 2
+        },
+        {
+          "id": "s-t-a-g-e-3-d-m-d-zheng-liu-yu-shuang-r-o-l-l-o-u-t",
+          "title": "Stage 3：DMD 蒸馏与双 rollout",
+          "level": 2
+        },
+        {
+          "id": "wu-shu-ju-gou-jian",
+          "title": "五、数据构建",
+          "level": 1
+        },
+        {
+          "id": "he-cheng-shu-ju",
+          "title": "合成数据",
+          "level": 2
+        },
+        {
+          "id": "lu-zhi-shu-ju",
+          "title": "录制数据",
+          "level": 2
+        },
+        {
+          "id": "shu-ju-chu-li-yu-zhi-jian",
+          "title": "数据处理与质检",
+          "level": 2
+        },
+        {
+          "id": "liu-liu-shi-guan-xian-yu-jia-su",
+          "title": "六、流式管线与加速",
+          "level": 1
+        },
+        {
+          "id": "8-g-p-u-bian-pai",
+          "title": "8 GPU 编排",
+          "level": 2
+        },
+        {
+          "id": "yin-guo-l-a-t-e-n-t-jie-ma",
+          "title": "因果 latent 解码",
+          "level": 2
+        },
+        {
+          "id": "tong-yi-k-v-guan-li",
+          "title": "统一 KV 管理",
+          "level": 2
+        },
+        {
+          "id": "c-h-u-n-k-ji-zhong-die-yu-jie-zhi-shi-jian-diao-du",
+          "title": "Chunk 级重叠与截止时间调度",
+          "level": 2
+        },
+        {
+          "id": "she-bei-gan-zhi-bing-xing-zhi-xing",
+          "title": "设备感知并行执行",
+          "level": 2
+        },
+        {
+          "id": "qi-ping-ce",
+          "title": "七、评测",
+          "level": 1
+        },
+        {
+          "id": "xie-yi-yu-jie-guo",
+          "title": "协议与结果",
+          "level": 2
+        },
+        {
+          "id": "hai-cha-zai-na",
+          "title": "还差在哪",
+          "level": 2
+        },
+        {
+          "id": "ba-xie-zai-zui-hou",
+          "title": "八、写在最后",
+          "level": 1
+        },
+        {
+          "id": "can-kao-zi-liao",
+          "title": "参考资料",
+          "level": 1
+        }
+      ],
+      "body_sha256": "89fbb4175ea5421819cf89a198aad6b5705c7df55f1c1fcad55b8f1471df896d"
+    },
+    {
       "id": "rsi-self-evolution",
       "url": "/rsi-self-evolution.html",
       "title": "AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时",
@@ -1257,14 +1417,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 14
+      "count": 15
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 14
+      "count": 15
     },
     {
       "name": "diffusion",

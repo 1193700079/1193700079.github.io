@@ -1,0 +1,93 @@
+---
+layout: "blog-post"
+post_id: "duo-rwm"
+title: "Duo：一个全双工交互的互惠世界模型"
+description: "inclusionAI 的 Duo v1 把「智能」从世界模型的输入侧挪到世界内部：一个全双工世界模型，一边持续感知音视频，一边实时回应。意图模块（Qwen3-VL + LoRA）每 17 帧 chunk 决定说还是等，把 hidden states 而不是文本传给因果音视频扩散实现模块。三阶段训练，核心是双 rollout 蒸馏到四步流式生成器。8 GPU 流式管线：统一 KV 管理、chunk 级重叠、设备感知并行。30 案例 × 6 标准 180 项检查过 168（93.3%），生成保真度最强，内容响应 73.3% 是下一版重点。"
+---
+{% raw %}
+<p>arXiv:2611.15131，inclusionAI 团队 20 位作者，2026-11-11。Duo v1 是一个全双工世界模型：一边持续感知音视频输入，一边实时响应用户。</p>
+<span id="more"></span>
+<p>论文的核心主张一句话：智能和物理现实同等基本，都是构成世界的东西。Reciprocal World Model（RWM）建立在这个观点上，拆成两个能力：Intent（交互背后的认知）和 Realization（生成连贯的视听行为）。Duo v1 是它的模块化实现：一个多模态语言模型（Qwen3-VL 骨干）负责意图，一个扩散模型负责实现。交互按 17 帧 chunk 推进（24fps 下约 0.71 秒），Intent 每 chunk 输出 &lt;speak&gt; 加文本或 &lt;wait&gt;，并把 hidden states（而不是解码文本）传给 Realization 模块，后者联合生成音视频 latent。训练分三阶段：意图监督微调、Realization 因果联合生成、DMD 双 rollout 蒸馏到四步流式生成器。在 30 个实时双工交互案例 × 6 项二元标准上，180 项检查通过 168 项（93.3%），生成保真度最强、内容响应最弱（73.3%），是下一版的重点。</p>
+<p>对做 LLM infra 的人，这篇最值得拿走的是流式管线与推理加速那一章：统一 KV 管理、chunk 级重叠、设备感知并行选择。这一套可以直接迁移到任何实时多模态推理调度上。</p>
+<h1 id="yi-bei-jing-ba-zhi-neng-nuo-jin-shi-jie-nei-bu"><a href="#yi-bei-jing-ba-zhi-neng-nuo-jin-shi-jie-nei-bu" class="headerlink" title="一、背景：把「智能」挪进世界内部"></a>一、背景：把「智能」挪进世界内部</h1>
+<p>世界模型一直只模拟物理侧：给定过去的观测和控制信号，预测场景如何演化（Ha and Schmidhuber 2018、Genie、GAIA-1、Cosmos 等）。智能在世界外面，用户用键盘鼠标或文字提示驱动世界，而世界内部没有任何东西能实时感知用户的完整状态并决定怎么回应。论文的原话很尖：「Such worlds can be accurate, yet they remain lifeless: there is a world to explore, but no one to talk to.」</p>
+<p>RWM 把这个反过来。智能和物理现实同等基本，交互是双向的：Intent 决定系统如何回应不断演化的环境，Realization 把那个意图表达成视听行为，而这个行为又反过来成为下一轮交互的环境。两侧持续感知对方的音视频，可以在对方还在动作时回应、打断或保持沉默。这就是全双工：用户可以分享真实物体、重塑虚拟场景、引导助手、或者玩音视频游戏，全程不需要键盘鼠标。</p>
+<p>一个世界由两个能力构成。Intent 提供交互背后的认知，Realization 生成连贯的视听行为。这两个功能角色可以由一个统一的多模态模型来承担，也可以由多模态语言模型加扩散模型的模块化系统来承担。Duo v1 就是那个模块化实现。</p>
+<h1 id="er-i-n-t-e-n-t-mo-kuai-yin-guo-de-c-h-u-n-k-shi-jiao-hu"><a href="#er-i-n-t-e-n-t-mo-kuai-yin-guo-de-c-h-u-n-k-shi-jiao-hu" class="headerlink" title="二、Intent 模块：因果的 chunk 式交互"></a>二、Intent 模块：因果的 chunk 式交互</h1>
+<p>这一节讲意图模块怎么在 17 帧的 chunk 节奏上做「现在说，还是等」的决策，以及因果性是怎么在输入层面保证的。</p>
+<p>骨干是 Qwen3-VL，用 LoRA 微调到因果 chunk 式交互模式。每个 chunk，模型输出两样之一：&lt;speak&gt; 加文本，或 &lt;wait&gt; 不加新文本。关键点是传给 Realization 模块的是它的 hidden states，不是解码出的文本。论文明确写 hidden states carry each decision to the realization module。文本只是意图的一种投影，生成模块需要的是决策本身（说还是等、说什么），不是一个字符串。</p>
+<h2 id="yin-guo-shu-ru-zu-zhuang"><a href="#yin-guo-shu-ru-zu-zhuang" class="headerlink" title="因果输入组装"></a>因果输入组装</h2>
+<p>输入按「何时可用」进入上下文，不要求所有模态共享一个采样率。ASR 把用户音频转成文字，强制对齐把每个文本 token 标到源音频时间轴上，token 只有在其对齐片段结束后才进入上下文。视频帧和音频样本用源时间戳映射到同一个半开 chunk 区间。助手文本目标按语音起始时间归到对应 chunk，初始 chunk 的输出固定为 &lt;wait&gt;。这样每个 chunk 的上下文只包含该决策边界处可用的信息，不同的 chunk 划分可以从同一条对齐记录推导出来。</p>
+<h2 id="yin-guo-shi-jue-bian-ma"><a href="#yin-guo-shi-jue-bian-ma" class="headerlink" title="因果视觉编码"></a>因果视觉编码</h2>
+<p>因果性必须在注意力施加之前就成立。时间 patch 可以组合多帧源画面，注意力掩码没法移除已经混进视觉 token 里的未来信息。所以每个时间组必须完全在单个输入 chunk 内部形成。对一个原生 17 帧的 chunk，源帧编号 0 到 16，最后一对是 (16,16)：最后一帧自配对，而不是借下一个 chunk 的第 17 帧。每个组在其源帧最晚时间戳处变为可用。这保住了预训练视觉输入的格式，又防止时间分组跨 chunk 边界。</p>
+<h2 id="a-c-t-i-o-n-a-w-a-r-e-r-e-b-a-l-a-n-c-i-n-g"><a href="#a-c-t-i-o-n-a-w-a-r-e-r-e-b-a-l-a-n-c-i-n-g" class="headerlink" title="Action-aware rebalancing"></a>Action-aware rebalancing</h2>
+<p>动机很直白：大多数 chunk 没有新的助手语音，不加权训练会偏向等待，意图模块会崩成永远的 &lt;wait&gt;。Action-aware rebalancing 是离线赋予监督类别的加权机制：根据录制的助手事件以及 chunk 开始时用户是否在说话，区分空闲等待和用户在说话时的等待、普通开场和打断开场。助手标注区分开场和延续，前一用户回合里标注的问题会单独给一个开场 tag。用这些标签对目标做子采样并加权 loss，action 和 content 的权重分开，开场类别另有调整。被采样的目标仍留在对话历史里。验证时保留全部可用目标，action、speech、wait 分别报告 token 级指标。</p>
+<p>还有历史扰动训练：在选定的延续 chunk 里截断或重复文本，mask 掉它们的 loss，保留后续有效目标的监督。对漏开场恢复，把选定的普通开场在历史里替换成 &lt;wait&gt; 并 mask 其 loss，同一助手回合的下一个 chunk 里只有 &lt;speak&gt; 贡献 loss。这是教会模型从自己不完美的早期回答里恢复。</p>
+<h1 id="san-v-a-e-he-r-e-a-l-i-z-a-t-i-o-n-mo-kuai"><a href="#san-v-a-e-he-r-e-a-l-i-z-a-t-i-o-n-mo-kuai" class="headerlink" title="三、VAE 和 Realization 模块"></a>三、VAE 和 Realization 模块</h1>
+<p>这一节讲音视频怎么被压成紧凑的 latent 空间，以及因果音视频扩散 Transformer 怎么做联合生成。</p>
+<h2 id="v-a-e"><a href="#v-a-e" class="headerlink" title="VAE"></a>VAE</h2>
+<p>VAE 存在是为了支持实时响应生成。音频：每个声道每秒压成 40 个 latent 向量，每个向量 32 维。视频：编码器按 17 帧一组处理，不足 17 帧会填充。每组是一个关键帧加四组各 4 帧，按 11-44-44-44-44 的时间排布。这 17 帧被编成 5 个 latent 帧，每个 latent 帧 24 维，空间分辨率降 16×16。形状 (17,H,W,3) 的帧组被编成 latent z_v ∈ R^(5 × H/16 × W/16 × 24)。进入扩散 Transformer 前，视频 latent 做 2×2 的空间合并，产出 2×2×24=96 维的视频输入向量。每个音频 latent 向量每声道 32 维。</p>
+<h2 id="r-e-a-l-i-z-a-t-i-o-n-yin-guo-yin-shi-pin-lian-he-kuo-san"><a href="#r-e-a-l-i-z-a-t-i-o-n-yin-guo-yin-shi-pin-lian-he-kuo-san" class="headerlink" title="Realization：因果音视频联合扩散"></a>Realization：因果音视频联合扩散</h2>
+<p>Realization 模块用一个因果音视频扩散 Transformer，用 MiniMax H3 的预训练权重初始化。模块在上面描述的 latent 空间里联合生成音频和视频，通过 flow matching 实现条件生成。从随机噪声出发，以意图表示、参考图、可用用户输入和之前生成的助手媒体为条件，生成音视频 latent。对历史媒体的访问支持跨响应 chunk 的连续性。</p>
+<p>意图条件：一个线性投影把 Intent 模块的 h_k 映射到 Realization 模块的 hidden 宽度，一个 refiner 网络产出文本条件嵌入。注意力掩码把特征计算限制在全局指令和当前助手文本输出关联的 token 位置上。</p>
+<p>媒体条件：用户音视频分别被音视频 VAE 编码器编码成条件 latent，参考图被视频 VAE 编码成参考 latent。这些 latent 映射成联合 DiT 的对应输入嵌入。之前生成的助手 latent 提供视听历史。这些条件合起来给当前响应 chunk 提供用户观测、参考外观、语义指导和生成历史。只包含 chunk k 之前可用的用户输入。</p>
+<p>位置嵌入：用 3D-RoPE 表示 token 间的时间和空间关系。文本条件嵌入只用时间坐标，两个空间坐标都设为零。音频 token 用两个极端的空间位置 ID 区分左右声道。音频和视频的时间坐标按真实播放时间对齐，每秒每声道 40 个 latent 向量，所以每个音频 latent 对应 25ms。用户输入音频的起点定义共同的时间原点，每个音频 token 的时间位置是它片段起点距这个原点的偏移除以 25ms。视频时间位置用对应的播放时间，同一原点、同一时间单位。这处理了 17 个源帧到 5 个视频 latent 帧的非均匀时间映射。</p>
+<h2 id="zhu-yi-li-yan-ma"><a href="#zhu-yi-li-yan-ma" class="headerlink" title="注意力掩码"></a>注意力掩码</h2>
+<p>掩码是 Realization 模块因果性的核心。当前 chunk 的带噪媒体可以读参考图、共享指令、更早 chunk 的干净媒体、本 chunk 的 hidden states、以及自己，但不能读本 chunk 的干净媒体，也不能读任何更晚的 chunk。当前 chunk 内部的带噪媒体嵌入还有内容边界：视频嵌入按顺序对应 5 个视频编码器 latent 表示，音频嵌入分左右声道各对应 25ms 音频。不过 chunk 内部这些嵌入是互相可见的。</p>
+<h1 id="si-san-jie-duan-xun-lian"><a href="#si-san-jie-duan-xun-lian" class="headerlink" title="四、三阶段训练"></a>四、三阶段训练</h1>
+<p>这一节讲三阶段训练管线，核心是 Stage 3 的双 rollout 蒸馏，它解决训练和推理条件不一致的问题。</p>
+<h2 id="s-t-a-g-e-1-yi-tu-xun-lian"><a href="#s-t-a-g-e-1-yi-tu-xun-lian" class="headerlink" title="Stage 1：意图训练"></a>Stage 1：意图训练</h2>
+<p>用因果监督微调把多模态意图模块适配到 chunk 对齐的对话上。在 chunk k 开头，模型从全局指令、chunk k-1 及之前可用的用户视频和 ASR 文本、更早的助手语言里预测助手输出文本 y_k。决策上下文排除助手视频。训练数据里，用户 token 在其对齐片段结束时变为可用，助手文本 token 按语音起始时间归入对应 chunk。&lt;speak&gt; 动作引入新文本，包含更早回合的延续；&lt;wait&gt; 动作不加新文本，可以和正在播放的媒体或伴随的非语言行为共存。初始助手输出 y_0 固定为 &lt;wait&gt;，作为上下文使用，不计入 loss。这一阶段结束后，冻结的意图模块用它前向传播产出的 hidden states 给媒体训练做条件。</p>
+<h2 id="s-t-a-g-e-2-r-e-a-l-i-z-a-t-i-o-n-xun-lian"><a href="#s-t-a-g-e-2-r-e-a-l-i-z-a-t-i-o-n-xun-lian" class="headerlink" title="Stage 2：Realization 训练"></a>Stage 2：Realization 训练</h2>
+<p>Stage 2 在冻结意图模块的前提下训练 Realization 模块做因果联合音视频生成。训练跟随条件结构式 (2)：从当前意图表示和可用交互上下文学习生成音视频 latent。每个流式生成片段在 24fps 下跨 17 个视频帧，即 17/24 ≈ 0.708 秒。为了对齐音视频编解码器的时间线，每个 chunk 的媒体嵌入数量对应 5 个视频 latent 表示和 2×29 个音频 latent 表示。训练时还会把干净的音视频嵌入插入序列，注意力掩码防止每个生成 chunk 的带噪媒体嵌入访问自己的干净信号。为了塞进初始化模型的上下文长度，从每条训练对话里随机采样一个连续 chunk 窗口。因为时间位置 ID 按真实视频播放时间对齐，即使采样的 chunk 序列不从对话开头开始，训练和推理的位置编码也保持接近。Flow matching 监督从随机噪声到干净 latent 状态的联合媒体速度，干净时间 τ=1，噪声时间 τ=0。</p>
+<h2 id="s-t-a-g-e-3-d-m-d-zheng-liu-yu-shuang-r-o-l-l-o-u-t"><a href="#s-t-a-g-e-3-d-m-d-zheng-liu-yu-shuang-r-o-l-l-o-u-t" class="headerlink" title="Stage 3：DMD 蒸馏与双 rollout"></a>Stage 3：DMD 蒸馏与双 rollout</h2>
+<p>DMD 把因果模型蒸馏成四步 chunk 因果生成器，让生成器自身样本的分布匹配数据分布，而不是像 CD 那样强制教师轨迹上相邻点的一致。两个 score 模型提供监督：冻结的 real-score 模型逼近条件数据分布，可训练的 fake-score 模型跟踪生成器不断变化的分布。生成器因果地合成一个 latent 窗口，两个 score 模型双向评估这个完成的窗口。每条对话从偏移后的离散噪声时间表里抽一个噪声水平 τ，窗口被腐蚀一次，两个模型在这个共享腐蚀下返回干净估计。逆 KL 散度的 DMD 梯度归约为两个估计的差。</p>
+<p>这一阶段的核心是双 rollout。蒸馏前，Realization 模块在从录制助手文本提取的意图特征和录制的媒体历史上训练，但真实交互里这两样都由系统自己产生。双 rollout 把推理时的条件带进蒸馏：在每个训练窗口里，冻结的意图模块自回归生成最后一轮助手回答，Realization 模块以产出的意图特征和它自己生成的视听历史为条件。这是对分布漂移的直接回答：蒸馏时的条件和真实交互时的条件一致。</p>
+<p>具体做法是冻结的意图模块只在每个训练窗口里 rollout 最后一轮助手回答。窗口可以从任意更早的 chunk 开始，结束在一个自然助手回合边界向上取整到编解码器 chunk 处。候选按预留 token 长度分桶，桶权重和长度平方成正比。意图模块回放 k0 之前的录制文本，之后贪心预测参与动作和文本，最后一轮的录制 token 和所有后续文本被移除。媒体 rollout 跟随 Self Forcing：生成器做 j 步不带梯度跟踪，再做一步可微步骤，其干净估计成为 chunk 输出，退出步 j 在整条轨迹里共享。每个 detach 的干净输出在 τ=1 处做干净前向传播来更新 KV cache。h_k 是实际前向传播中捕获的第 50 层状态，不用对生成文本额外走一遍。</p>
+<p>还有可选的 GAN loss，加入来自训练媒体的直接反馈：fake-score 骨干中间块特征上的轻量头，用学到的注意力查询把每条对话有效的音视频 token 池化成单个 logit。它的输入物理排除了文本、意图模块、参考、干净上下文行，所以判别器评的是联合音视频真实感，不要求生成媒体复现录制的转录文本。</p>
+<p>此外有辅助的摄像头旋转感知加权。DMD 可能引入分布匹配没有显式惩罚的相机旋转漂移，所以用冻结的 VGGT 从解码 rollout 帧估计的旋转来重加权视频 DMD loss。持续偏离和累积旋转定义一个权重 ρ，稳定窗口拿到最多 ρmax 的权重，强烈旋转的窗口拿到 ρmin。这个加权在不把梯度传进 VGGT 或 VAE 的情况下重平衡 DMD 更新。论文也点出已知问题：刻意的视角变化和不可靠的旋转估计也会影响权重。</p>
+<h1 id="wu-shu-ju-gou-jian"><a href="#wu-shu-ju-gou-jian" class="headerlink" title="五、数据构建"></a>五、数据构建</h1>
+<p>这一节讲全双工世界模型的训练数据怎么来：合成的双人视频通话，加六类录制数据。</p>
+<h2 id="he-cheng-shu-ju"><a href="#he-cheng-shu-ju" class="headerlink" title="合成数据"></a>合成数据</h2>
+<p>合成管线生成一个两人视频通话，两个参与者一起渲染。Stage I 纯文本：采样控制卡，LLM 在这些卡下写结构化剧本，规则检查拒绝无效剧本，模板把每个剧本块转成一个文本提示。Stage II 把这些提示喂给 t2v 模型，逐块生成一个分屏音视频流。左面板永远是用户，右面板永远是助手。在统一时间线上同时生成两个面板和共享音频，保住对话、反应、重叠和打断的时序。</p>
+<p>控制卡是多样性的来源。没有显式约束，LLM 生成的对话倾向于重复相似的话题、关系和回合模式。控制卡定义带预设候选值的属性，每条剧本这些值被均匀采样并作为显式要求写进生成提示。属性包括时长（30s/45s/60s）、语言（中文/英文）、persona（关系 12 个值如「亲子」「同事」「医患」，职业每参与者 11 个值如「消防员」「护士」「厨师」）、micro-actions（off/on，「on」建议 24 个小反应如「点头」「挑眉」「短暂移开视线」）、interaction（日常交流/打断/追问辩论/主动询问）、emotion（固定为「跟随话题和对话」）、resolution（1536×576 或 1152×768，仅供视频合成用）。每个 interaction 值带书面规范，例如「interruption」要求一个说话人在另一个说完前切入、简短的语音重叠、被打断者让出回合。</p>
+<p>验证过的剧本被模板转成每块一个 t2v 提示，不再调用 LLM。被阴影的句子对所有样本固定，分三组：参考角色（前一末帧是起始状态，开场视频只设画质，开场音频只设声音和房间底噪，没有这些角色模型倾向于回放参考视频或重复它的对话）、画面内容（每个面板是参与者自己的前置摄像头，排除第三人称、镜像和背后视角，排除录制设备、UI 元素和字幕，内容不能越过中缝，两个裁剪保持干净）、因果顺序（反应只能在其触发结束后才开始，��手视角不会在用户动作前回应）。</p>
+<p>分块生成：block 0 拿提示加一张两个面板被细黑线分隔的白色布局图，布局图只固定分屏几何，两个参与者和背景由模型从提示里创建。之后每块以上一块的末帧为起点（时间对齐到第一目标帧，保住跨块的姿态、表情和取景），固定 block-0 开头 124 帧作为画质参考（亮度、曝光、色彩锐度、噪声），block 0 的完整音频锚定两个声音和房间底噪。生成条件按原始表示保留：初始视频用 VAE latent，末帧用原始 RGB。</p>
+<p>错误累积对比：基线的合成方法让每块只条件于上一块末帧，视觉错误随时间累积。论文在 60 秒、十个 6 秒块的序列上对比两种策略，基线到第 9 块丢掉 34.2 个亮度级，人脸纹理越来越夸张；他们的方法在轻微初期下跌后稳定在约 99 亮度级，人脸外观一直保持到第 9 块一致。这就是为什么要固定 block-0 开头 124 帧作为画质参考贯穿整个生成：漂移被那个固定参考抑制。</p>
+<h2 id="lu-zhi-shu-ju"><a href="#lu-zhi-shu-ju" class="headerlink" title="录制数据"></a>录制数据</h2>
+<p>录制数据按来源和交互格式组织成六类：单流视频（单人播客、单人演讲，片段 10 到 90 秒，保留自然停顿）、同步双流视频（两个参与者同时可见，保住倾听行为、重叠语音和反应）、异步双流视频（参与者出现在随说话回合交替的独立片段里，如访谈素材）、带弹幕的直播（带时间戳的观众提问对齐主讲人回答，重建用户视频，把直播转成同步双流对话）、双工音频录制（两人对话的全双工音频，驱动进一步的视频合成）、开源数据集（从开源数据集收集的单人说话视频，按通用录制标准过滤）。</p>
+<p>通用录制标准：真实说话人和其原始声音，说话人身份、转录和时间映射保留，无关音频排除。视频数据每段保留连续未剪辑的半身或全身视角，音视频精确同步，每个视角有效分辨率至少 720p，无视觉叠加层。双流录制至少包含一次完整对话往来。</p>
+<h2 id="shu-ju-chu-li-yu-zhi-jian"><a href="#shu-ju-chu-li-yu-zhi-jian" class="headerlink" title="数据处理与质检"></a>数据处理与质检</h2>
+<p>合成数据质检有四项自动检查。首帧一致性：把首帧和条件图对比，要求 SSIM 至少 0.90，感知哈希汉明距离至多 4。意外音频：用响度归一化、波形残差和 VAD 对比生成音频和源音频，拒绝有解释不了的声音活动持续至少 0.40 秒的片段。镜头推进：以 4 FPS 跟踪人脸尺度，首个有效检测作为基线，持续放大的拒绝阈值是平滑尺度达到基线 1.30 倍且持续 0.75 秒，骤变是 0.50 秒内跳 1.22 倍。持久大面积视觉变化：以 4 FPS 采样帧，测量 LAB 差异、变化像素比例和色彩/亮度直方图距离，拒绝相对变更前帧仍高于阈值的骤变，或相对初始帧累积漂移超过外观和直方图双重阈值的漂移。</p>
+<p>直播数据处理：收集存档直播并去重源记录，用采样帧检查真实参与者在场和视觉质量。Qwen3-ASR-1.7B 和 Qwen3-ForcedAligner-0.6B 产出带字或字级时间戳的转录，Silero VAD 识别语音和静音区间，Qwen2.5-Omni-7B 审查音频类型。说话人分离和说话人数检查组合 FSMN-VAD（语音检测）、Paraformer（转录）、CAM++（说话人嵌入后聚类），这些检查排除含唱歌、气声或多人说话的窗口，产出带时间戳的候选素材。对话构建把真实聊天日志里提取的观众评论匹配到主讲人回答，匹配不上时根据主讲人原始语音和可用静音生成对应话语并安排插入，审查对话连贯性、完整性和音视频对应后，提取连续的助手侧视频片段，围绕主讲人裁剪掉屏幕弹幕和水印，合成对应的用户侧视频，两个视角配对在共享时间线上。</p>
+<h1 id="liu-liu-shi-guan-xian-yu-jia-su"><a href="#liu-liu-shi-guan-xian-yu-jia-su" class="headerlink" title="六、流式管线与加速"></a>六、流式管线与加速</h1>
+<p>这一节是 LLM infra 的人最该拿走的部分：一套完整的实时多模态流式推理调度方案。</p>
+<h2 id="8-g-p-u-bian-pai"><a href="#8-g-p-u-bian-pai" class="headerlink" title="8 GPU 编排"></a>8 GPU 编排</h2>
+<p>系统用编排式调度策略同步意图模块、Realization 模块和 VAE 解码。前端设备持续采集用户音视频并转发做 chunk 式处理。每个 chunk 经过输入采集、意图推理、联合 latent 生成、流式解码四个阶段，响应生成期间输入采集不中断。</p>
+<p>单机 8 GPU 的布局：意图模块的 VLM 在 GPU0-3 上跑四路张量并行（TP4），旁边挂辅助 ASR。Realization 模块的 DiT 用张量或序列并行（TP/SP）在 GPU0-7 上跑。流式 VAE 用 4 路空间切块在 GPU4-7 上跑。意图模块的 hidden states 条件 Realization 模块，后者做 4 步去噪加一次提交 KV 状态的干净前向。</p>
+<p>时延账：交互采样，24fps 下每个采样窗口 17 个视频帧加对应用户音频，窗口时长 17/24 秒约 708ms。意图推理 90-160ms，取决于输入和上下文长度。联合 latent 生成在 768×576 视频分辨率下 200-450ms，取决于上下文长度。流式解码一个 4 帧组约 30ms。其它开销（数据搬运、传到前端设备、显示处理）约 40ms。意图推理、latent 生成和开销三项合计约 330-650ms。到首个可见输出的时延还要加上初始解码时间和采样窗口关闭前的剩余等待。一个在采样窗口内结束的语句或动作可能额外引入最多约 708ms 的采样延迟。播放期间对生成帧做后处理以维持视觉稳定和运动平滑。</p>
+<h2 id="yin-guo-l-a-t-e-n-t-jie-ma"><a href="#yin-guo-l-a-t-e-n-t-jie-ma" class="headerlink" title="因果 latent 解码"></a>因果 latent 解码</h2>
+<p>原始 VAE 把 5 个 latent 帧解码成 17 个视频帧，需要 2 个 latent 帧的前瞻。这个依赖在流式播放的 chunk 边界引入额外等待。Duo v1 把解码过程改成增量处理可用视频 latent。响应 chunk 联合生成后，它的视频 latent 逐个解码，每个 latent 产出 4 个视频帧，再做时间对齐匹配原始播放时间表、保住 17 帧 chunk 时长。这样播放可以从已生成的 chunk 开始，不用等下一个 chunk 的额外 latent。</p>
+<p>24fps 下最短播放间隔对应每组第一个 latent，时间对齐后代表一个视频帧，这个间隔是 1/24s 约 41.7ms。实测单 latent 解码约 30ms，低于这个间隔。只要生成的 latent 按时到位，解码器就能跟上播放。这就是「能跟上」论证的关键：30ms 短于 41.7ms。</p>
+<h2 id="tong-yi-k-v-guan-li"><a href="#tong-yi-k-v-guan-li" class="headerlink" title="统一 KV 管理"></a>统一 KV 管理</h2>
+<p>共享 KV cache 管理器跟踪 cache 的所有权和设备放置，意图模块用滑动窗口驱逐，Realization 模块用周期性历史重置。每个 chunk，4 次去噪前向读已提交的历史 KV，不提交中间带噪状态；一次额外干净前向处理生成 latent，写入后续 chunk 用的 KV 状态。重置边界处，管理器在去噪前丢弃历史媒体 KV，保留参考和共享条件，干净前向随后建立新历史。重置间隔控制保留上下文、内存使用和依赖上下文的时延。重启后，管理器按原顺序重放完成的 latent 走干净前向来重建活跃媒体 cache，遵循相同的重置边界和保留策略。</p>
+<h2 id="c-h-u-n-k-ji-zhong-die-yu-jie-zhi-shi-jian-diao-du"><a href="#c-h-u-n-k-ji-zhong-die-yu-jie-zhi-shi-jian-diao-du" class="headerlink" title="Chunk 级重叠与截止时间调度"></a>Chunk 级重叠与截止时间调度</h2>
+<p>Realization 模块去噪和干净前向用全部 8 GPU。生成阶段之间，GPU0-3 跑 chunk k+1 的意图推理，GPU4-7 解码 chunk k，两组都完成后生成恢复。时间对齐后，每个 17 帧 chunk 增量释放：一个 1 帧锚点加四个 4 帧包，每个都和它的音频同步。</p>
+<p>周期时间公式：T_cycle,k = t_gen,k + max(t_intent,k+1, t_decode,k_full) + t_switch,k。目标是 T_cycle,k ≤ 17/24s，留阶段时长波动的余量。完整解码进入吞吐预算，只有首包解码进入初始响应路径。调度器预留解码槽位、限制输出对播放的超前量，用 KV 窗口、可用内存和估算阶段时长来准入工作。</p>
+<h2 id="she-bei-gan-zhi-bing-xing-zhi-xing"><a href="#she-bei-gan-zhi-bing-xing-zhi-xing" class="headerlink" title="设备感知并行执行"></a>设备感知并行执行</h2>
+<p>意图模块用四路张量并行。Realization 模块在 TP 和 SP 之间选择，SP 配置下每个 rank 持完整权重副本并处理 token 序列的一部分，TP 分割权重和矩阵计算。对 chunk k，运行时选最快可行配置：在 profiled 运行时间上做 SP/TP 的 argmin，约束是每 GPU 的内存（权重、保留 KV、通信缓冲、临时量）。内存允许时保留权重，空闲期预取非驻留权重，计入传输和同步成本。ASR、输入传输、组包准备利用数据依赖允许下的管线间隙。</p>
+<h1 id="qi-ping-ce"><a href="#qi-ping-ce" class="headerlink" title="七、评测"></a>七、评测</h1>
+<p>这一节讲评测协议和结果，重点在生成保真度和内容响应之间的明显落差。</p>
+<h2 id="xie-yi-yu-jie-guo"><a href="#xie-yi-yu-jie-guo" class="headerlink" title="协议与结果"></a>协议与结果</h2>
+<p>在 30 个实时双工交互案例上评测，每个案例把用户音视频输入和模型生成的音视频回复按共享时间线并排回放。每条回复按终端用户会体验到的方式评判，正常播放速度带声音，对照六项二元标准：内容响应、语言遵从、语音清晰、视觉身份稳定、音视频同步、音视频情绪一致。每项标准都有书面失败条件，没有部分得分。</p>
+<p>180 项检查（30 案例 × 6 标准）通过 168 项（93.3%）。最清楚的优势是生成保真度：模型在语言遵从、语音清晰、视觉身份稳定上 90 项检查全过。每条回复都以期望语言、完整清晰的语音到达，没有任何案例出现可见的身份切换、面部或身体畸形、无法解释的外观变化。跨模态连贯性几乎一样强：声音情绪与面部表情和肢体语言在 96.7% 的案例里一致，唇形与语音对齐在 90.0%。</p>
+<h2 id="hai-cha-zai-na"><a href="#hai-cha-zai-na" class="headerlink" title="还差在哪"></a>还差在哪</h2>
+<p>内容响应（回复是否实质回应了用户刚说的和展示的）达到 73.3%（22/30），是协议里最苛刻的标准，因为双工模型必须在语音和视频还在流入时就敲定回复。漏项主要落进两类模式。第一类是对话长尾，笑话和怪话，恰当的回复需要读出字面之外的意图，还要实时完成。第二类是只有音视频合读才清楚的意图。有一个案例，用户坐在室内说刚解锁了共享单车就开始下雨了，考虑到室内场景这读起来是抱怨，模型却当成求建议，建议先别骑。两类都归结为从用户说的和展示的一切里推断他到底什么意思，而且要对等对话速度。这是双工交互里最难的问题之一，也是下一迭代的核心重点，它建立在已经通过所有语言、语音和身份检查的地基上。</p>
+<h1 id="ba-xie-zai-zui-hou"><a href="#ba-xie-zai-zui-hou" class="headerlink" title="八、写在最后"></a>八、写在最后</h1>
+<p>这篇的方法论价值在于把「智能」从世界模型的输入侧挪到世界内部。Intent 和 Realization 共享一条统一时间轴，用 hidden states 而不是文本做接口，用双 rollout 蒸馏解决训练和推理条件不一致。三个技术设计是：自回归意图建模做连续交互推理和参与决策，chunk 级条件在统一时间轴上跨 Intent 和 Realization 同步，双 rollout 蒸馏缓解两个模块的分布漂移。</p>
+<p>对做 LLM infra 的人，流式管线那一章是一套可以直接借鉴的实时多模态推理调度：统一 KV 管理（意图模块滑动窗口、Realization 周期性重置历史）、chunk 级重叠（GPU0-3 跑下一 chunk 的意图推理、GPU4-7 解码当前 chunk）、设备感知并行选择（TP/SP 在每 GPU 内存约束下取 argmin）。这三件事可以平移到任何实时多模态推理调度问题上。</p>
+<p>Duo v1 是明确的第一版。论文自己指出它目前支持基础音视频对话，响应时机、长会话一致性和对误解的恢复都还需要更广的评测。开发在持续进行，更新版很快会来。</p>
+<h1 id="can-kao-zi-liao"><a href="#can-kao-zi-liao" class="headerlink" title="参考资料"></a>参考资料</h1>
+<ul><li>arXiv:2611.15131，Duo: A Reciprocal World Model for Full-Duplex Interaction，https://arxiv.org/abs/2611.15131</li><li>GitHub：https://github.com/inclusionAI/Duo</li><li>项目主页：https://duo-v1.github.io/</li></ul>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

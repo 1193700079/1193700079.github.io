@@ -1,6 +1,76 @@
 {
   "posts": [
     {
+      "id": "muir-linear-attention",
+      "url": "/muir-linear-attention.html",
+      "title": "读懂 Muir：用机制分析给线性注意力的门控重新分账，FFN 白拿 30%",
+      "date": "2026-11-19T12:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "GDN-2 把 delta rule 的四个门全做成 channel-wise，代价是两个 dense d×d 矩阵把 FFN 挤到 3d-256。Muir 用机制分析发现状态对写门的敏感度是对擦除门的 13 倍（SiLU+单位归一化把 key 能量集中到约 5% 通道），于是把擦除和衰减压到 rank 64、写入输出留 rank 128，再加一个匹配滤波读出门 γ。省下的 2d² 参数全投给 FFN（dffn 从 3d-256 拉到 4d-512），166M-1.34B 上验证 NLL 比 GDN-2 低 18-20 mnat，cooldown 后 1M token passkey recall 99.4%。",
+      "minutes": 13,
+      "toc": [
+        {
+          "id": "yi-bei-jing-g-d-n-2-de-can-shu-zhang",
+          "title": "一、背景：GDN-2 的参数账",
+          "level": 1
+        },
+        {
+          "id": "er-liang-ge-fan-zhi-jue-de-fa-xian",
+          "title": "二、两个反直觉的发现",
+          "level": 1
+        },
+        {
+          "id": "xie-ca-chu-min-gan-xing-bu-dui-cheng",
+          "title": "写/擦除敏感性不对称",
+          "level": 2
+        },
+        {
+          "id": "jing-zhi-xing-neng-liang-ding-lv",
+          "title": "静止行能量定律",
+          "level": 2
+        },
+        {
+          "id": "san-pi-pei-lv-bo-du-chu-men",
+          "title": "三、匹配滤波读出门 γ",
+          "level": 1
+        },
+        {
+          "id": "si-m-u-i-r-jia-gou-wu-ge-men-yi-ge-rong-he-tou-ying",
+          "title": "四、Muir 架构：五个门，一个融合投影",
+          "level": 1
+        },
+        {
+          "id": "wu-bian-jie-zhi-dian-c-h-u-n-k-w-i-s-e-he",
+          "title": "五、边界支点 chunkwise 核",
+          "level": 1
+        },
+        {
+          "id": "liu-shi-yan",
+          "title": "六、实验",
+          "level": 1
+        },
+        {
+          "id": "qi-xie-zai-zui-hou",
+          "title": "七、写在最后",
+          "level": 1
+        },
+        {
+          "id": "can-kao-zi-liao",
+          "title": "参考资料",
+          "level": 1
+        }
+      ],
+      "body_sha256": "150f9ac016240862c698317830089828c0e4e787e2725d3a1e41db04bcecfd30"
+    },
+    {
       "id": "rsi-self-evolution",
       "url": "/rsi-self-evolution.html",
       "title": "AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时",
@@ -1187,14 +1257,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 13
+      "count": 14
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 13
+      "count": 14
     },
     {
       "name": "diffusion",

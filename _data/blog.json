@@ -15,7 +15,7 @@
         "llm"
       ],
       "summary": "GDN-2 把 delta rule 的四个门全做成 channel-wise，代价是两个 dense d×d 矩阵把 FFN 挤到 3d-256。Muir 用机制分析发现状态对写门的敏感度是对擦除门的 13 倍（SiLU+单位归一化把 key 能量集中到约 5% 通道），于是把擦除和衰减压到 rank 64、写入输出留 rank 128，再加一个匹配滤波读出门 γ。省下的 2d² 参数全投给 FFN（dffn 从 3d-256 拉到 4d-512），166M-1.34B 上验证 NLL 比 GDN-2 低 18-20 mnat，cooldown 后 1M token passkey recall 99.4%。",
-      "minutes": 13,
+      "minutes": 17,
       "toc": [
         {
           "id": "yi-bei-jing-g-d-n-2-de-can-shu-zhang",
@@ -68,7 +68,7 @@
           "level": 1
         }
       ],
-      "body_sha256": "150f9ac016240862c698317830089828c0e4e787e2725d3a1e41db04bcecfd30"
+      "body_sha256": "5ca6b699c4ebe72b9ea11a3ed869cfeee75b642db1f679ac99285a899c87e300"
     },
     {
       "id": "duo-rwm",

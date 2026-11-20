@@ -1,6 +1,76 @@
 {
   "posts": [
     {
+      "id": "muon-optimizer",
+      "url": "/muon-optimizer.html",
+      "title": "Muon 优化器：给隐层上「正交梯度」，和 AdamW 掰掰手腕",
+      "date": "2026-11-20T15:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "Muon 是 2024 年末由 Katherine Lee 与 Tri Dao（KDL）提出的优化器，专为 LLM 的隐层（矩阵权重）设计。它的核心是「动量 + 正交化」：把动量梯度用 Newton-Schulz 迭代正交化成一个旋转矩阵，再走一个固定大小的步。在 LLM 训练上，Muon 用明显更少的 token 就能达到和 AdamW 相同的 loss，而且常常更快、更稳、对超参更不敏感。这篇博客讲透 Muon 的算法直觉，并和 AdamW 逐维度对比。",
+      "minutes": 5,
+      "toc": [
+        {
+          "id": "yi-beijing-adamw-de-zhucanshuguiyihua-zaizuoshenme",
+          "title": "一、背景：AdamW 的「逐参数归一化」在做什么",
+          "level": 1
+        },
+        {
+          "id": "er-hexinzhijue-bameigefangxiangdegengxinfudulaping",
+          "title": "二、核心直觉：把每个方向的更新幅度拉平",
+          "level": 1
+        },
+        {
+          "id": "san-muon-desuanfa",
+          "title": "三、Muon 的算法",
+          "level": 1
+        },
+        {
+          "id": "si-weishenme-muon-gengkuai-gengwen",
+          "title": "四、为什么 Muon 更快、更稳",
+          "level": 1
+        },
+        {
+          "id": "wu-muon-vs-adamw-zhuweiduduibi",
+          "title": "五、Muon vs AdamW 逐维度对比",
+          "level": 1
+        },
+        {
+          "id": "liu-shiyanjieguo-kdl-yuanwen",
+          "title": "六、实验结果（KDL 原文）",
+          "level": 1
+        },
+        {
+          "id": "qi-fenbushixunlian-muon-weiyideewaidaijia",
+          "title": "七、分布式训练：Muon 唯一的额外代价",
+          "level": 1
+        },
+        {
+          "id": "ba-shijianyaodianyukeng",
+          "title": "八、实践要点与坑",
+          "level": 1
+        },
+        {
+          "id": "jiu-jielun",
+          "title": "九、结论",
+          "level": 1
+        },
+        {
+          "id": "cankaoziliao",
+          "title": "参考资料",
+          "level": 1
+        }
+      ],
+      "body_sha256": "8855feb423ec370a9b8ad5b6cc0e62da052f2f63cc8e12fdbf385cacf5f56ce0"
+    },
+    {
       "id": "muir-linear-attention",
       "url": "/muir-linear-attention.html",
       "title": "读懂 Muir：用机制分析给线性注意力的门控重新分账，FFN 白拿 30%",
@@ -1417,14 +1487,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 15
+      "count": 16
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 15
+      "count": 16
     },
     {
       "name": "diffusion",

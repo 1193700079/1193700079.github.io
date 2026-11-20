@@ -1,0 +1,54 @@
+---
+layout: "blog-post"
+post_id: "muon-optimizer"
+title: "Muon 优化器：给隐层上「正交梯度」，和 AdamW 掰掰手腕"
+description: 'Muon 是 2024 年末由 Katherine Lee 与 Tri Dao（KDL）提出的优化器，专为 LLM 的隐层（矩阵权重）设计。它的核心是「动量 + 正交化」：把动量梯度用 Newton-Schulz 迭代正交化成一个旋转矩阵，再走一个固定大小的步。在 LLM 训练上，Muon 用明显更少的 token 就能达到和 AdamW 相同的 loss，而且常常更快、更稳、对超参更不敏感。这篇博客讲透 Muon 的算法直觉，并和 AdamW 逐维度对比。'
+---
+{% raw %}
+<p>Muon 是 2024 年末由 Katherine Lee 与 Tri Dao（KDL）提出的优化器，专为 LLM 的隐层（矩阵权重）设计。它的核心是「动量 + 正交化」：把动量梯度用 Newton-Schulz 迭代正交化成一个旋转矩阵，再走一个固定大小的步。在 LLM 训练上，Muon 用明显更少的 token 就能达到和 AdamW 相同的 loss，而且常常更快、更稳、对超参更不敏感。这篇博客讲透 Muon 的算法直觉，并和 AdamW 逐维度对比。</p>
+<span id="more"></span>
+<h1 id="yi-beijing-adamw-de-zhucanshuguiyihua-zaizuoshenme"><a href="#yi-beijing-adamw-de-zhucanshuguiyihua-zaizuoshenme" class="headerlink" title="一、背景：AdamW 的「逐参数归一化」在做什么"></a>一、背景：AdamW 的「逐参数归一化」在做什么</h1>
+<p>AdamW 每一步干两件事：</p>
+<ul><li>用一阶矩 <code>m</code>、二阶矩 <code>v</code> 分别估计梯度的均值与方差；</li><li>用 <code>1/√v</code> 对<strong>每个参数元素</strong>做逐元素归一化，再乘学习率。</li></ul>
+<p>这套机制极其通用——标量、向量、矩阵一视同仁，每个元素独立处理。但它隐含一个假设：<strong>每个参数彼此独立，方向由自身梯度决定、幅值由自身历史方差缩放</strong>。对隐层这种矩阵参数，这个假设有点「歪」：一个矩阵的梯度方向应该作为<strong>一个整体（一个线性映射）</strong>来理解，而不是被拆成一堆孤立元素。逐元素归一化会把矩阵的几何结构打散。</p>
+<h1 id="er-hexinzhijue-bameigefangxiangdegengxinfudulaping"><a href="#er-hexinzhijue-bameigefangxiangdegengxinfudulaping" class="headerlink" title="二、核心直觉：把每个方向的更新幅度拉平"></a>二、核心直觉：把每个方向的更新幅度拉平</h1>
+<p>AdamW 的逐参数归一化对标量是中性的，但对矩阵有一个不舒服的性质：每个参数走一步的步长与它自身梯度的滑动均值大小成正比。而隐层的梯度动量往往<strong>近似低秩</strong>——能量挤在少数几个奇异方向上，那几个大方向主导了更新，很多幅度小但重要的方向几乎得不到更新，收敛就慢。</p>
+<p>隐层权重 W 本质上是一个线性映射。对一个线性映射做「最自然的更新」，不是把每个元素各自推一点，而是乘上一个<strong>正交矩阵</strong>（一个旋转）。正交化把每个方向的更新幅度拉平：既不因某方向梯度大就猛推，也不因某方向梯度小就无视。小而重要的方向终于被重视，同时大方向也不会失控放大。</p>
+<p>Muon 的做法就是把梯度（动量之后的梯度）正交化成纯旋转，然后走一个固定大小的步。于是：</p>
+<ul><li>每步更新幅度恒定（正交矩阵范数是 √rank，再乘固定系数），不随梯度幅值波动；</li><li>更新方向是梯度的「正交方向」，保留了矩阵的几何意义。</li></ul>
+<p>这就是 Muon 名字里的 <strong>M</strong>（Momentum）和 <strong>O</strong>（Orthogonalize）。</p>
+<h1 id="san-muon-desuanfa"><a href="#san-muon-desuanfa" class="headerlink" title="三、Muon 的算法"></a>三、Muon 的算法</h1>
+<p>对隐层矩阵参数，Muon 的更新分四步：</p>
+<p><strong>1. 动量</strong></p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">m_t = β · m_{t-1} + g_t</span><br></pre></td></tr></table></figure>
+<p>其中 <code>g_t</code> 是当前梯度。</p>
+<p><strong>2. 正交化（极分解）</strong></p>
+<p>把动量矩阵正交化成它的极因子：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">u_t = m_t · (m_t^T m_t)^{-1/2}</span><br></pre></td></tr></table></figure>
+<p><code>u_t</code> 是一个正交矩阵（旋转）：保留 <code>m_t</code> 的「方向」，丢掉「长短」（奇异值大小）。直接算 <code>(m^T m)^{-1/2}</code> 需要 SVD，太贵。Muon 用 <strong>Newton-Schulz 迭代</strong> 逼近它——一个三次多项式反复迭代，5 次就把奇异值推向 1，等效于一次 SVD 的极分解：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Y₀ = m / ‖m‖_F            # 先归一化到合适的量级</span><br><span class="line">Xₖ₊₁ = 3.44·Xₖ − 4.77·XₖXₖᵀXₖ + 2.03·XₖXₖᵀXₖXₖᵀXₖ   # 5 次迭代</span><br></pre></td></tr></table></figure>
+<p>全程只有矩阵乘法，GPU 跑得飞快。不动点是缩放过的符号函数（≈ 0.707·sign）——方向正确，幅值随后统一由缩放系数定。</p>
+<p><strong>3. 固定步长缩放</strong></p>
+<p>正交矩阵的范数是 √rank。Muon 再乘一个固定系数 <code>mu_scale</code>（约 <code>0.2·√max(m, n)</code>，<code>m/n</code> 为矩阵两维），得到大小恒定的旋转步：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">W ← W − lr · mu_scale · u</span><br></pre></td></tr></table></figure>
+<p>步长恒定意味着 Muon 每步都在「转一个固定角度」，不会像 Adam 那样在梯度方差大的地方把步长缩到几乎为零、白白浪费步数。</p>
+<p><strong>4. 1D 参数回退 AdamW</strong></p>
+<p>Muon 只对 2D 矩阵有意义。对 bias、LayerNorm、embedding、输出头等 1D 参数，直接回退 AdamW。所以实践里 Muon 是个 <strong>hybrid 优化器</strong>：矩阵参数用 Muon，1D 参数用 AdamW。</p>
+<h1 id="si-weishenme-muon-gengkuai-gengwen"><a href="#si-weishenme-muon-gengkuai-gengwen" class="headerlink" title="四、为什么 Muon 更快、更稳"></a>四、为什么 Muon 更快、更稳</h1>
+<p><strong>步长恒定，不浪费步数。</strong> Adam 的逐元素归一化在方差大的参数上会把步长压得很小，大量步几乎原地踏步。Muon 的旋转步大小恒定，每一步都有有效进展。</p>
+<p><strong>matmul 比 elementwise 更省。</strong> AdamW 是逐元素操作（读 m、v、p 再写回），是内存带宽瓶颈；Muon 的正交化是几次矩阵乘，是计算瓶颈，而现代 GPU 对 matmul 的优化极好。在合适的矩阵形状下，Muon 的 wall-clock 常常反而比 AdamW 快。</p>
+<p><strong>对超参鲁棒、基本免 warmup。</strong> 步长是固定旋转，Muon 对学习率没那么敏感，也不需要 Adam 那样一段很长的 warmup 去等二阶矩估计稳定。</p>
+<p><strong>显存更省。</strong> Muon 只需存动量缓冲 <code>m</code>（与 AdamW 一阶矩同量级），不用存二阶矩 <code>v</code>，自适应状态直接省一半。</p>
+<h1 id="wu-muon-vs-adamw-zhuweiduduibi"><a href="#wu-muon-vs-adamw-zhuweiduduibi" class="headerlink" title="五、Muon vs AdamW 逐维度对比"></a>五、Muon vs AdamW 逐维度对比</h1>
+<table><thead><tr><th>维度</th><th>AdamW</th><th>Muon</th></tr></thead><tbody><tr><td>归一化粒度</td><td>逐参数（每元素独立）</td><td>矩阵级（整个隐层一起正交化）</td></tr><tr><td>步长行为</td><td>自适应，可缩到极小（随 1/√v）</td><td>固定，恒定旋转（不随梯度幅值变）</td></tr><tr><td>几何保真</td><td>逐元素归一化会扭曲矩阵方向</td><td>正交化保留矩阵的旋转几何</td></tr><tr><td>计算开销</td><td>O(n) 逐元素，内存带宽瓶颈</td><td>O(n³) 矩阵乘，计算瓶颈（常数小、GPU 高效）</td></tr><tr><td>收敛速度</td><td>基线</td><td>更少 token 达相同 loss（KDL 实验约 2 倍量级加速）</td></tr><tr><td>适用形状</td><td>任意（标量 / 向量 / 矩阵）</td><td>仅 2D 矩阵；1D 回退 AdamW</td></tr><tr><td>超参敏感度</td><td>较敏感，需要 warmup</td><td>较鲁棒，基本免 warmup</td></tr><tr><td>显存自适应状态</td><td>m + v 两份</td><td>仅 m 一份</td></tr><tr><td>实现复杂度</td><td>简单、标准</td><td>需 Newton-Schulz 迭代 + 缩放标定</td></tr></tbody></table>
+<h1 id="liu-shiyanjieguo-kdl-yuanwen"><a href="#liu-shiyanjieguo-kdl-yuanwen" class="headerlink" title="六、实验结果（KDL 原文）"></a>六、实验结果（KDL 原文）</h1>
+<p>KDL 在训练约 1.4B 参数、Llama 风格架构的 LLM 上对比了 Muon、AdamW 与 AdamW-8bit。结论：Muon 用显著更少的 token 达到相同验证 loss（大致 2 倍量级加速），训练曲线更平滑、对 LR 选择更宽容。注意优势主要在「大量隐层矩阵」的 LLM 上——矩阵参数占比越高，Muon 收益越明显；纯 1D 或非矩阵模型里没有用武之地。</p>
+<h1 id="qi-fenbushixunlian-muon-weiyideewaidaijia"><a href="#qi-fenbushixunlian-muon-weiyideewaidaijia" class="headerlink" title="七、分布式训练：Muon 唯一的额外代价"></a>七、分布式训练：Muon 唯一的额外代价</h1>
+<p>Muon 的正交化需要<strong>完整的梯度矩阵</strong>才能做，没法像 AdamW 那样逐元素直接分片到不同 GPU。论文里的 Distributed Muon 在数据并行组里先 Gather 出完整梯度、算完正交化再把各自那部分取回本地，通信开销大约只比 AdamW 高 1 ~ 1.25 倍——在万亿参数这种通信本来就昂贵的场景下基本可忽略。</p>
+<h1 id="ba-shijianyaodianyukeng"><a href="#ba-shijianyaodianyukeng" class="headerlink" title="八、实践要点与坑"></a>八、实践要点与坑</h1>
+<ul><li><strong>Hybrid 用法</strong>：矩阵参数走 Muon，1D 参数走 AdamW。别对 bias / embedding 套 Muon。</li><li><strong>迭代次数</strong>：5 次 Newton-Schulz 是经验值——太少不收敛（不正交），太多纯浪费。</li><li><strong>缩放系数</strong>：<code>mu_scale</code> 是标定值，换矩阵形状或 batch 规模可能要重调。</li><li><strong>显存</strong>：比 AdamW 省一份二阶矩 <code>v</code>；动量缓冲 <code>m</code> 与 AdamW 一阶矩相当。</li><li><strong>别指望 Muon 全替代 AdamW</strong>：它只优化矩阵参数，非矩阵部分仍归 AdamW。</li><li><strong>固定步长 = 不会自动刹车</strong>：损失面特别陡的地方，Muon 可能不如 AdamW 收敛得细腻，需配合合适的 LR。</li><li><strong>Kimi K2 已经验证</strong>：月之暗面 Kimi K2 在万亿参数规模上就用 Muon 的改进版 MuonClip 端到端训练，是第一个不依赖 AdamW 的开源大模型——MuonClip 把正交化步长做了更细的截断控制，更稳。</li></ul>
+<h1 id="jiu-jielun"><a href="#jiu-jielun" class="headerlink" title="九、结论"></a>九、结论</h1>
+<p>Muon 把「隐层是线性映射」用进了优化器：不逐参数归一化，而是把梯度正交化成旋转、走固定步长。它与 AdamW 不是竞争关系，而是分工——矩阵参数用 Muon，1D 参数用 AdamW。在 LLM 训练上 Muon 能少用约一半 token 达到同等效果，还更稳、更省显存、更不挑超参。如果你在训 LLM、受困于 AdamW 的收敛慢或对 LR 敏感，Muon 值得上手一试。</p>
+<h1 id="cankaoziliao"><a href="#cankaoziliao" class="headerlink" title="参考资料"></a>参考资料</h1>
+<ul><li>K. Lee, T. Dao, et al. *Muon: An Optimizer for LLMs*（2024，KDL）。</li><li>古希腊掌管代码的神，《【面试进阶】Muon 优化器凭什么取代 AdamW？只存动量、显存减半，还收敛更快》—— [BV1LLKx6SEkQ](https://www.bilibili.com/video/BV1LLKx6SEkQ)，3 分 44 秒，面试速记视角，低秩动量与分布式通信代价讲得清楚。</li></ul>
+{% endraw %}

@@ -1,6 +1,51 @@
 {
   "posts": [
     {
+      "id": "rollout-rl",
+      "url": "/rollout-rl.html",
+      "title": "什么是 Rollout？RL 训练里的经验采样，四步流程 + 头号瓶颈",
+      "date": "2026-11-20T18:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "<p>大模型强化学习里，PPO 和 GRPO 都绕不开一个词：<strong>Rollout</strong>。它的本质就一句话——用当前策略模型对一批 prompt 做推理、把「模型说了什么」连同「每个 token 当时的概率」一起收集起来，形成训练要用的经验数据。它自己不动参数，只负责采数据。这篇把 Rollout 的四步流程、为什么生成时要顺手记 log-prob，以及为什么它是头号时间瓶颈一次讲透。</p>",
+      "minutes": 6,
+      "toc": [
+        {
+          "id": "yi-rollout-shen-xu-zi",
+          "title": "一、Rollout 到底是什么",
+          "level": 1
+        },
+        {
+          "id": "er-yi-ci-wan-zheng-rollout-de-si-bu",
+          "title": "二、一次完整 Rollout 的四步",
+          "level": 1
+        },
+        {
+          "id": "san-wei-shen-me-sheng-cheng-shi-yao-ji-logprob",
+          "title": "三、为什么生成时要顺手记 log-prob",
+          "level": 1
+        },
+        {
+          "id": "si-wei-shen-me-rollout-shi-tou-hao-ping-ping",
+          "title": "四、为什么 Rollout 是头号瓶颈",
+          "level": 1
+        },
+        {
+          "id": "wu-mian-shi-zen-me-da",
+          "title": "五、面试怎么答",
+          "level": 1
+        }
+      ],
+      "body_sha256": "c35420ea944122c43cf13cdfb75c1a0b91984adb7bd0da849c3c79f71bbe8dd3"
+    },
+    {
       "id": "attention-flash-kvcache",
       "url": "/attention-flash-kvcache.html",
       "title": "Flash Attention 和 KV Cache：大模型面试的 Attention 双题",
@@ -1607,14 +1652,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 18
+      "count": 19
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 18
+      "count": 19
     },
     {
       "name": "diffusion",

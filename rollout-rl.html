@@ -1,0 +1,38 @@
+---
+layout: "blog-post"
+post_id: "rollout-rl"
+title: "什么是 Rollout？RL 训练里的经验采样，四步流程 + 头号瓶颈"
+description: '大模型强化学习（PPO / GRPO）里的 Rollout，本质是用当前策略模型批量推理、收集经验数据的过程——它不更新参数，只负责采数据。这篇从原理讲起：一次完整 Rollout 的四步流程，为什么生成时要顺手记录 log-prob（重要性采样和 PPO/GRPO clip 的源头），以及为什么 Rollout 是整个训练的头号时间瓶颈、工程上怎么解。'
+---
+{% raw %}
+<p>大模型强化学习里，PPO 和 GRPO 都绕不开一个词：<strong>Rollout</strong>。它的本质就一句话——用当前策略模型对一批 prompt 做推理、把「模型说了什么」连同「每个 token 当时的概率」一起收集起来，形成训练要用的经验数据。它自己不动参数，只负责采数据。这篇把 Rollout 的四步流程、为什么生成时要顺手记 log-prob，以及为什么它是头号时间瓶颈一次讲透。</p>
+<span id="more"></span>
+<h1 id="yi-rollout-shen-xu-zi"><a href="#yi-rollout-shen-xu-zi" class="headerlink" title="一、Rollout 到底是什么"></a>一、Rollout 到底是什么</h1>
+<p>Rollout 的本质就一句话：<strong>用当前策略模型 π_θold 对一批 prompt 做推理，把「模型说了什么」连同「每个 token 当时的概率」一起收起来</strong>，形成训练要用的经验数据。它自己不动参数，只负责采数据。</p>
+<p>类比老师教学生：得先让学生做一批题、把解题过程交上来，老师才能批改打分、再纠正。Rollout 就是「让学生做题」这一步。做题（生成）和批改纠正（训练更新）是两件事，前者是后者的前提。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Rollout  = 推理采样（学生做题）   → 产出经验缓冲区 Buffer</span><br><span class="line">训练     = 梯度更新（老师批改纠正）→ 消费 Buffer 里的轨迹</span><br></pre></td></tr></table></figure>
+<p>分清这一层，后面就不会乱：Rollout 只负责把数据采出来放进 Buffer，训练阶段才拿这些数据去更新参数。两个角色，两个进程，工程上常常解耦成两套引擎。</p>
+<h1 id="er-yi-ci-wan-zheng-rollout-de-si-bu"><a href="#er-yi-ci-wan-zheng-rollout-de-si-bu" class="headerlink" title="二、一次完整 Rollout 的四步"></a>二、一次完整 Rollout 的四步</h1>
+<p>一次完整的 Rollout 分四步走，先给全景，再逐步展开。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">① 环境初始化  从训练集抽一批 prompt，交给当前策略模型 π_θold</span><br><span class="line">② 动作生成    逐 token 生成回答，同时记录每个 token 的 log-prob，凑成一条轨迹 τ</span><br><span class="line">③ 计算奖励    奖励模型给「prompt + 完整回答」打一个标量分数 r</span><br><span class="line">④ 数据收集    把序列、旧 log-prob、KL 惩罚、reward 打包进经验缓冲区 Buffer</span><br></pre></td></tr></table></figure>
+<p><strong>① 环境初始化。</strong>从训练集里采样一批 prompt（问题、指令、题目），作为起点喂给当前策略模型 π_θold。这一步定下本批 Rollout 要处理多少个样本。</p>
+<p><strong>② 动作生成。</strong>模型逐 token 自回归生成回答。关键动作是：生成第 t 个 token 的同时，记下它「在当前策略下的对数概率」log π_θold(a_t|s_t)。一串「上下文 + 动作 + 各步 log-prob」合起来就是一条轨迹 τ。这个 log-prob 是第三节要追问的考点，这里先记住它被顺手记了下来。</p>
+<p><strong>③ 计算奖励。</strong>生成结束后，奖励模型对「prompt + 完整回答」整段打一个分数 r。注意是<strong>整段打分</strong>（sequence-level），不是逐 token 打——逐 token 的信用分配是训练阶段才做的事，Rollout 只负责拿到一个整体的分数。</p>
+<p><strong>④ 数据收集。</strong>把这条序列、每个 token 的旧 log-prob、KL 惩罚项（约束新策略别离参考模型太远）、reward r，一并打包进经验缓冲区 Buffer。训练阶段就来这里取数据。</p>
+<h1 id="san-wei-shen-me-sheng-cheng-shi-yao-ji-logprob"><a href="#san-wei-shen-me-sheng-cheng-shi-yao-ji-logprob" class="headerlink" title="三、为什么生成时要顺手记 log-prob"></a>三、为什么生成时要顺手记 log-prob</h1>
+<p>这是面试最爱追问的一处。Rollout 用的是「旧策略」π_θold，可等训练更新几步之后，模型已经变成「新策略」π_θnew。手里这批数据是旧策略采出来的，直接拿去训新策略会有偏差。</p>
+<p>标准解法是<strong>重要性采样</strong>：用一个「新旧策略在同一 token 上的概率比值」r_t 去给梯度做加权校正。而这个比值的分母，正是 Rollout 阶段记下的那份旧 log-prob 取 exp。所以生成时必须顺手记 log-prob，否则训练阶段无从校正。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">r_t = π_θnew(a_t|s_t) / π_θold(a_t|s_t)        ← 新旧策略在同一 token 上的概率比</span><br><span class="line">旧 log-prob = log π_θold(a_t|s_t)             ← 这个比值取 log 的分母，Rollout 顺手记下的</span><br><span class="line">PPO/GRPO 的 clip：clip(r_t, 1-ε, 1+ε)         ← clip 的对象就是这个 r_t</span><br></pre></td></tr></table></figure>
+<p>再往前一步：这个比值 r_t 就是 PPO/GRPO 里 <strong>clip</strong> 的对象。PPO 的 clip(r_t, 1-ε, 1+ε)、GRPO 的 clip，clip 的都是这个新旧概率比。所以「为什么生成时要记 log-prob」和「clip 到底 clip 的是什么」其实是<strong>同一个问题的两面</strong>——前者是后者的数据前提。</p>
+<h1 id="si-wei-shen-me-rollout-shi-tou-hao-ping-ping"><a href="#si-wei-shen-me-rollout-shi-tou-hao-ping-ping" class="headerlink" title="四、为什么 Rollout 是头号瓶颈"></a>四、为什么 Rollout 是头号瓶颈</h1>
+<p>工程上最扎心的一点：<strong>Rollout 慢</strong>。因为它做的是自回归生成——一个字一个字蹦，天生慢；而训练只是「一次前向 + 一次反向」，快得多。实测里 Rollout 的生成环节能占掉整个训练 60%~70% 的时间。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Rollout 生成   ████████████████████████   ~60-70%</span><br><span class="line">训练前向+反向  ██                          ~30%</span><br><span class="line">长样本还在生成时，短样本已就绪 → GPU 空转等长尾</span><br></pre></td></tr></table></figure>
+<p>雪上加霜的是<strong>长度不齐</strong>。一批样本里回答有长有短，短的早早生成完，只能干等最长的生成完才能一起进训练——等的那段时间 GPU 空转。</p>
+<p>解法是用 vLLM / SGLang 这类推理引擎做批量并行生成：</p>
+<ul><li><strong>prefix caching</strong>：共享相同前缀的 KV cache，减少重复计算。</li><li><strong>continuous batching</strong>：把长短不一的样本动态拼装，短样本生成完空出来的位，立刻补进新样本，尽量不让 GPU 空转。</li></ul>
+<p>这也是为什么 RL 训练框架普遍把「生成」和「训练」解耦成两个进程、两套引擎——各自用最适合的推理/计算引擎，互不拖累。</p>
+<h1 id="wu-mian-shi-zen-me-da"><a href="#wu-mian-shi-zen-me-da" class="headerlink" title="五、面试怎么答"></a>五、面试怎么答</h1>
+<p>把上面串成一段标准答案，方便面试直接复述：</p>
+<blockquote><p>Rollout 是 RL 训练里用当前策略模型对一批 prompt 做推理、收集「轨迹 + 每个 token 的旧 log-prob + reward」的过程，它不更新参数、只采数据。四步：环境初始化抽 prompt，动作生成逐 token 并顺手记 log-prob 凑成轨迹，奖励模型对整段回答打分，最后把序列、旧 log-prob、KL 惩罚、reward 打包进 Buffer。记 log-prob 是因为新旧策略要用重要性采样比值 r_t 校正梯度，旧 log-prob 是这个比值取 log 的分母，也是 PPO/GRPO clip 的对象。它又是头号时间瓶颈，因为自回归生成一个字一个字蹦、天生比前向+反向慢，实测占 60-70%，长度不齐还让 GPU 空转，所以工程上用 vLLM/SGLang 做批量并行 + prefix caching + continuous batching 来解。</p></blockquote>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

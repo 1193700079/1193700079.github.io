@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>什么是 Rollout？RL 训练里的经验采样，四步流程 + 头号瓶颈</title>
+    <url>/rollout-rl.html</url>
+    <content><![CDATA[<p>大模型强化学习里，PPO 和 GRPO 都绕不开一个词：<strong>Rollout</strong>。它的本质就一句话——用当前策略模型对一批 prompt 做推理、把「模型说了什么」连同「每个 token 当时的概率」一起收集起来，形成训练要用的经验数据。它自己不动参数，只负责采数据。这篇把 Rollout 的四步流程、为什么生成时要顺手记 log-prob，以及为什么它是头号时间瓶颈一次讲透。</p><span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>Flash Attention 和 KV Cache：大模型面试的 Attention 双题</title>
     <url>/attention-flash-kvcache.html</url>
     <content><![CDATA[大模型面试里 Attention 这块，翻来覆去就考两道题：<strong>训练阶段为什么用 Flash Attention</strong>，<strong>推理阶段 KV Cache 是怎么回事</strong>。一个解决训练慢、显存爆，一个解决推理重复计算。这篇把两题各自的原理一次讲透。<span id="more"></span>]]></content>

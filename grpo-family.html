@@ -1,0 +1,71 @@
+---
+layout: "blog-post"
+post_id: "grpo-family"
+title: "其实只有一个算法：从一道题看懂 GRPO、RLOO、DAPO、GSPO"
+description: 'GRPO、RLOO、DAPO、GSPO 四个名字、四篇论文，都说自己在改 GRPO 的一点什么，读起来像四个算法。其实核心机制只有一条：给每个答案算一个「比基准好多少」的推力 A，再据此调概率。这篇从一道 8 个答案的数学题开始，一步步把 A 是什么、基准选谁、GRPO 与 RLOO 差的那一个常数、DAPO 和 GSPO 各修了什么讲清楚。文中所有数字都能用脚本自己跑出来。'
+---
+{% raw %}
+<p>GRPO、RLOO、DAPO、GSPO 四个名字、四篇论文，都说自己在改 GRPO 的一点什么，读起来像四个算法。其实核心机制只有一条：给每个答案算一个「比基准好多少」的推力 A，再据此调概率。这篇从一道 8 个答案的数学题开始，一步步把 A 是什么、基准选谁、GRPO 与 RLOO 差的那一个常数、DAPO 和 GSPO 各修了什么讲清楚。文中所有数字都能用脚本自己跑出来。</p>
+<span id="more"></span>
+<h1 id="yi-xianpaoyigejutilizi"><a href="#yi-xianpaoyigejutilizi" class="headerlink" title="一、先跑一个具体例子"></a>一、先跑一个具体例子</h1>
+<p>一道数学题，模型写了 8 个答案，人工判对错：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">答案:    1  2  3  4  5  6  7  8</span><br><span class="line">对错:    1  1  0  1  0  1  1  0     ← 5 对 3 错</span><br></pre></td></tr></table></figure>
+<p>现在算出来的东西长这样（就是上面脚本跑的结果）：</p>
+<table><thead><tr><th>答案</th><th>对错</th><th>RLOO 算的 A</th><th>GRPO 算的 A</th></tr></thead><tbody><tr><td>1</td><td>✓</td><td><strong>+0.429</strong></td><td><strong>+0.774</strong></td></tr><tr><td>2</td><td>✓</td><td>+0.429</td><td>+0.774</td></tr><tr><td>3</td><td>✗</td><td><strong>−0.714</strong></td><td><strong>−1.291</strong></td></tr><tr><td>4</td><td>✓</td><td>+0.429</td><td>+0.774</td></tr><tr><td>5</td><td>✗</td><td>−0.714</td><td>−1.291</td></tr><tr><td>6</td><td>✓</td><td>+0.429</td><td>+0.774</td></tr><tr><td>7</td><td>✓</td><td>+0.429</td><td>+0.774</td></tr><tr><td>8</td><td>✗</td><td>−0.714</td><td>−1.291</td></tr></tbody></table>
+<p><strong>这个 A 就是四个算法唯一在争的东西。</strong> 剩下的全是细节。</p>
+<h1 id="er-a-daodishiganmade"><a href="#er-a-daodishiganmade" class="headerlink" title="二、A 到底是干嘛的"></a>二、A 到底是干嘛的</h1>
+<p>模型学习只做一件事：<strong>把某个答案的概率调高或调低</strong>。</p>
+<ul><li>答对的答案，下次让它更可能出现（概率调高）</li><li>答错的，让它更不可能出现（概率调低）</li></ul>
+<p>但“调多少”得有个数。这个数就是 A：</p>
+<ul><li><strong>A 是正的</strong> → 这答案比一般水平好 → 概率调高</li><li><strong>A 是负的</strong> → 比一般水平差 → 概率调低</li><li><strong>|A| 越大</strong> → 动得越狠</li></ul>
+<p>所以上面那张表读起来就是：</p>
+<blockquote><p>答案 1 对了，概率往上推 0.429；答案 3 错了，概率往下压 0.714。</p></blockquote>
+<p>就这么简单。A 就是<strong>推力</strong>。</p>
+<h1 id="san-weishenmebunengzhijieyongfenshudangtuili"><a href="#san-weishenmebunengzhijieyongfenshudangtuili" class="headerlink" title="三、为什么不能直接用分数当推力"></a>三、为什么不能直接用分数当推力</h1>
+<p>因为分数只有 1 和 0，<strong>全是正的，没有“比谁好”这回事</strong>。</p>
+<p>模型看到 8 个答案全是 1 或 0，它没法知道“这个 1 是碰巧蒙对的还是真会”。必须找一个<strong>基准</strong>，减掉它，才能看出谁在基准之上、谁在之下。</p>
+<p><strong>四个算法的全部差异，就在“基准选谁”这一步。</strong></p>
+<h1 id="si-jizhunxuanshui-rloo-he-grpo"><a href="#si-jizhunxuanshui-rloo-he-grpo" class="headerlink" title="四、基准选谁：RLOO 和 GRPO"></a>四、基准选谁：RLOO 和 GRPO</h1>
+<p><strong>RLOO 的基准</strong>：其他 7 个答案的平均分。</p>
+<p>答案 1 对了，其他 7 个里 4 个对 3 个错，平均 4/7 = 0.571。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">A = 1 − 0.571 = 0.429   ✓ 对上了</span><br></pre></td></tr></table></figure>
+<p>答案 3 错了，其他 7 个里 5 个对 2 个错，平均 5/7 = 0.714。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">A = 0 − 0.714 = −0.714  ✓ 对上了</span><br></pre></td></tr></table></figure>
+<p><strong>为什么要“剔掉自己”</strong>：如果算上自己，平均分会因为你的成绩被拉高，减完就显得“没那么好”；这样自己把自己算进了基准里，信号被稀释了。</p>
+<p><strong>GRPO 的基准</strong>：全部 8 个答案的平均分，再除以标准差。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">平均 = 5/8 = 0.625</span><br><span class="line">标准差 = 0.484</span><br><span class="line"></span><br><span class="line">答案 1:  A = (1 − 0.625) / 0.484 = 0.774   ✓</span><br><span class="line">答案 3:  A = (0 − 0.625) / 0.484 = −1.291  ✓</span><br></pre></td></tr></table></figure>
+<h1 id="wu-yigenikenengmeizhuyidaodezhenxiang"><a href="#wu-yigenikenengmeizhuyidaodezhenxiang" class="headerlink" title="五、一个你可能没注意到的真相"></a>五、一个你可能没注意到的真相</h1>
+<p>看这两组数字：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RLOO:  对的 +0.429,  错的 −0.714</span><br><span class="line">GRPO:  对的 +0.774,  错的 −1.291</span><br></pre></td></tr></table></figure>
+<p><strong>它们的方向一模一样，只是 GRPO 的数字大了 1.8 倍。</strong></p>
+<p>也就是说：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GRPO 的 A = RLOO 的 A × 1.8</span><br></pre></td></tr></table></figure>
+<p><strong>在这个例子里，两个算法给模型的指引完全相同</strong>：哪些答案该推、哪些该压，一个不差。唯一的区别是“推多大力”。而“力度”这个东西，本来就能靠调学习率补回来。</p>
+<p>所以第一个重要结论：</p>
+<blockquote><p><strong>RLOO 和 GRPO，在“答案对错”这种 0/1 奖励下，本质是同一个算法，只差一个缩放的常数。</strong></p></blockquote>
+<p>那“除以标准差”到底有什么用？只有当<strong>不同题的分差不一样</strong>时才显出来。看两种情况：</p>
+<table><thead><tr><th></th><th>8 个答案的分差</th><th>除以标准差后</th></tr></thead><tbody><tr><td>简单题（几乎全对）</td><td>很小，比如 0.01</td><td>0.01 的差距被放大成强信号</td></tr><tr><td>难题（对错参半）</td><td>很大，比如 0.5</td><td>差距被压一压，别一步迈太大</td></tr></tbody></table>
+<p>RLOO 不做这步，所以简单题上信号很弱、难题上又太猛。<strong>这是 GRPO 唯一真正比 RLOO 强的地方。</strong></p>
+<h1 id="liu-dapo-gaidebushi-a-shi-zenmeyong"><a href="#liu-dapo-gaidebushi-a-shi-zenmeyong" class="headerlink" title="六、DAPO：改的不是 A，是“怎么用”"></a>六、DAPO：改的不是 A，是“怎么用”</h1>
+<p>到这一步，DAPO 和 GSPO 的定位就清楚了 —— <strong>它们没动 A，动的是“拿到 A 之后怎么更新模型”</strong>。</p>
+<p>DAPO（字节）是 GRPO 加上四个工程补丁，全部解决实战中踩到的坑：</p>
+<ol><li><strong>全对/全错的题直接扔掉</strong> —— 如果 8 个答案全对，上面那张表里所有 A 都是 0，白算一场。DAPO 重新采样，直到凑出一批有区分度的。</li><li><strong>上界放宽</strong>（0.2 → 0.28）—— 该涨的答案，别卡太死。</li><li><strong>按字算账而不是按句算账</strong> —— 一条 2 个字的答案和一条 8 个字的答案，谁对 loss 贡献大？按句算各占一半，按字算 3% vs 97%。按句算会让模型学到“写短点”。</li><li><strong>写超长强罚</strong> —— 配合第 3 条，防止水字数。</li></ol>
+<h1 id="qi-gspo-gaideshi-bilv"><a href="#qi-gspo-gaideshi-bilv" class="headerlink" title="七、GSPO：改的是“比率”"></a>七、GSPO：改的是“比率”</h1>
+<p>这里要引入第二个概念，它跟 A 是两回事：</p>
+<ul><li><strong>A</strong>：这个答案好不好（推力方向）</li><li><strong>比率</strong>：更新后，这个答案的概率变成了原来的几倍（衡量“改了多少”）</li></ul>
+<p>PPO 系都要管住“比率”，别一次改太猛。GRPO 是<strong>逐字</strong>算比率的：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">第 1 个字：改了多少倍？  单独 clip</span><br><span class="line">第 2 个字：改了多少倍？  单独 clip</span><br><span class="line">第 3 个字：改了多少倍？  单独 clip</span><br></pre></td></tr></table></figure>
+<p><strong>问题来了</strong>：同一句话里，有的字被判“改太多，砍掉”，有的字被放行。可这句话整体是该强化的 —— 结果一半被砍、一半放行，信号自相矛盾。</p>
+<p>GSPO（阿里）改成<strong>整句算一个比率</strong>：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">整句话的概率改了多少倍？  一次 clip</span><br></pre></td></tr></table></figure>
+<p>要么整句放行，要么整句拦下。</p>
+<p><strong>为什么这对 MoE 特别关键</strong>：MoE 模型里每个字走哪几个“专家”是动态选的。训练中路由一变，<strong>单个字的概率就会剧烈抖动</strong>，逐字的比率跟着乱跳，训练就崩了 —— 这是 Qwen 训 MoE 时的真实痛点。整句平均一下，单点的抖动被稀释掉，训练立刻稳了。</p>
+<h1 id="ba-yijuhualiqingsizhedeguanxi"><a href="#ba-yijuhualiqingsizhedeguanxi" class="headerlink" title="八、一句话理清四者的关系"></a>八、一句话理清四者的关系</h1>
+<blockquote><p><strong>其实只有一个算法（GRPO），和它的三个变体。</strong></p></blockquote>
+<ul><li><strong>RLOO</strong>：GRPO 的“简化版”，不除标准差。省事，但简单题上信号弱。</li><li><strong>DAPO</strong>：GRPO 的“工程加固版”，A 不变，补了四个实战坑。</li><li><strong>GSPO</strong>：GRPO 的“换单位版”，A 不变，把逐字改成整句。</li></ul>
+<p>读起来觉得乱，多半是因为它们名字不同、论文不同、还都对着 GRPO 改一点 —— 但<strong>核心那个“减基准算推力”的机制，四家一模一样</strong>。</p>
+<h1 id="jiu-zijidongshoupaoyibian"><a href="#jiu-zijidongshoupaoyibian" class="headerlink" title="九、自己动手跑一遍"></a>九、自己动手跑一遍</h1>
+<p>上面所有数字都能自己跑：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cd /Users/mac/Downloads/个人简历/grpo_rloo &amp;&amp; python3 demo_explain.py</span><br></pre></td></tr></table></figure>
+<p>如果某一步还是卡住，回到对应那一节，对着具体数字再读一遍。</p>
+{% endraw %}

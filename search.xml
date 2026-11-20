@@ -1,83 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>其实只有一个算法：从一道题看懂 GRPO、RLOO、DAPO、GSPO</title>
+    <url>/grpo-family.html</url>
+    <content><![CDATA[GRPO、RLOO、DAPO、GSPO 四个名字、四篇论文，都说自己在改 GRPO 的一点什么，读起来像四个算法。其实核心机制只有一条：给每个答案算一个「比基准好多少」的推力 A，再据此调概率。这篇从一道 8 个答案的数学题开始，一步步把 A 是什么、基准选谁、GRPO 与 RLOO 差的那一个常数、DAPO 和 GSPO 各修了什么讲清楚。文中所有数字都能用脚本自己跑出来。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>Muon 优化器：给隐层上「正交梯度」，和 AdamW 掰掰手腕</title>
     <url>/muon-optimizer.html</url>
     <content><![CDATA[Muon 是 2024 年末由 Katherine Lee 与 Tri Dao（KDL）提出的优化器，专为 LLM 的隐层（矩阵权重）设计。它的核心是「动量 + 正交化」：把动量梯度用 Newton-Schulz 迭代正交化成一个旋转矩阵，再走一个固定大小的步。在 LLM 训练上，Muon 用明显更少的 token 就能达到和 AdamW 相同的 loss，而且常常更快、更稳、对超参更不敏感。这篇博客讲透 Muon 的算法直觉，并和 AdamW 逐维度对比。<span id="more"></span>]]></content>
   </entry>
-
+  <entry>
     <title>读懂 Muir：用机制分析给线性注意力的门控重新分账，FFN 白拿 30%</title>
     <url>/muir-linear-attention.html</url>
     <content><![CDATA[GDN-2 把 delta rule 的四个门全做成 channel-wise，代价是两个 dense d×d 矩阵把 FFN 挤到 3d-256。Muir 用机制分析发现状态对写门的敏感度是对擦除门的 13 倍（SiLU+单位归一化把 key 能量集中到约 5% 通道），于是把擦除和衰减压到 rank 64、写入输出留 rank 128，再加一个匹配滤波读出门 γ。省下的 2d² 参数全投给 FFN（dffn 从 3d-256 拉到 4d-512），166M-1.34B 上验证 NLL 比 GDN-2 低 18-20 mnat，cooldown 后 1M token passkey recall 99.4%。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>Duo：一个全双工交互的互惠世界模型</title>
     <url>/duo-rwm.html</url>
     <content><![CDATA[inclusionAI 的 Duo v1 把「智能」从世界模型的输入侧挪到世界内部：一个全双工世界模型，一边持续感知音视频，一边实时回应。意图模块（Qwen3-VL + LoRA）每 17 帧 chunk 决定说还是等，把 hidden states 而不是文本传给因果音视频扩散实现模块。三阶段训练，核心是双 rollout 蒸馏到四步流式生成器。8 GPU 流式管线：统一 KV 管理、chunk 级重叠、设备感知并行。30 案例 × 6 标准 180 项检查过 168（93.3%），生成保真度最强，内容响应 73.3% 是下一版重点。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>AI 如何自我进化：RSI 全景、被揭穿的收益与智能爆炸的倒计时</title>
     <url>/rsi-self-evolution.html</url>
     <content><![CDATA[如果 AI 能设计出一个比自己更聪明的 AI，下一代是不是又能设计出更强的下一代？递归自我改进（RSI）正把这条路径从概念推向工程。这篇梳理从哥德尔机、foundation model 自训练，到 harness 自进化的一整条谱系——并指出一个关键事实：许多 harness 进化的收益其实是过拟合和 test-time scaling。最后落在 Hinton、Bengio 的判断：软件驱动的智能爆炸在短期内是可能的，而行动的窗口可能正在关闭。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>消融（Obliteration）：给开源 AI 动手术，永久关掉「拒绝」</title>
     <url>/obliteration-ai.html</url>
     <content><![CDATA[同一个模型，改里面几个数字，它就再也不会拒绝。越狱是骗模型、微调是胶模型、消融是直接对权重动手术。安全训练只是模型内部的一根线，找到剪断，一张 3090 一下午搞定。代价：真实性掉 1-6 分、数学掉 8 分，最后几个拒绝是断崖式代价。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>Drex：走向基础决策模型——不生成文字，直接读出概率分布</title>
     <url>/drex-decision-models.html</url>
     <content><![CDATA[Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>InfraRSI：让训练基础设施自主探索与自我进化的 Agent Harness</title>
     <url>/infrarsi.html</url>
     <content><![CDATA[基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>大模型加速优化：从一张全景图到一套方法论</title>
     <url>/llm-accel-panorama.html</url>
     <content><![CDATA[本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你</title>
     <url>/sglang-pro6000-load-test.html</url>
     <content><![CDATA[nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>一篇读懂 TileLang：从编程模型演化到 DeepInfer 里的六个真实算子</title>
     <url>/tilelang.html</url>
     <content><![CDATA[TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>Multi-Harness RL：把人真在用的 agent harness 当 RL 环境训开源模型</title>
     <url>/multi-harness-rl.html</url>
     <content><![CDATA[同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>stable-diffusion.cpp：图像生成领域的纯 C/C++ 推理框架</title>
     <url>/stable-diffusion-cpp.html</url>
     <content><![CDATA[基于 GGML 的 C/C++ 扩散模型推理框架，类比 llama.cpp：多模型、多后端、内存优化与二次开发方向。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>MIG 与动态 TP：GPU 切卡与张量并行弹性化的两条路</title>
     <url>/mig-dynamic-tp.html</url>
     <content><![CDATA[阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>Reinforcement Learning-driven Diffusion Models：语言、视觉与更远的边界</title>
     <url>/rl-diffusion-survey.html</url>
     <content><![CDATA[梳理强化学习与扩散模型的结合：从语言、图像和视频，到机器人与科学建模。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>LeapQuant：近乎无损的 8-bit 线性注意力递归态量化</title>
     <url>/leapquant.html</url>
     <content><![CDATA[阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。<span id="more"></span>]]></content>
-
-
+  </entry>
+  <entry>
     <title>Databricks：如何让 Qwen 3.8 27B 微调快6倍</title>
     <url>/qwen-sft-6x.html</url>
     <content><![CDATA[围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。<span id="more"></span>]]></content>
-
+  </entry>
 </search>

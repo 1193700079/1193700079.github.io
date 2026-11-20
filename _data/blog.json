@@ -1,6 +1,61 @@
 {
   "posts": [
     {
+      "id": "attention-flash-kvcache",
+      "url": "/attention-flash-kvcache.html",
+      "title": "Flash Attention 和 KV Cache：大模型面试的 Attention 双题",
+      "date": "2026-11-20T17:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "大模型面试里 Attention 这块，翻来覆去就考两道题：<strong>训练阶段为什么用 Flash Attention</strong>，<strong>推理阶段 KV Cache 是怎么回事</strong>。一个解决训练慢、显存爆，一个解决推理重复计算。这篇把两题各自的原理一次讲透。",
+      "minutes": 8,
+      "toc": [
+        {
+          "id": "yi-yuanzhengnanshi-shenme",
+          "title": "一、原始 Attention 的麻烦",
+          "level": 1
+        },
+        {
+          "id": "er-hbm-he-sram-de-cengji",
+          "title": "二、HBM 和 SRAM 的层级",
+          "level": 1
+        },
+        {
+          "id": "san-softmax-de-pingyi-bu-bianxing",
+          "title": "三、softmax 的平移不变性",
+          "level": 1
+        },
+        {
+          "id": "si-kv-cache-shen-xu-zi-zenme-zou",
+          "title": "四、KV Cache 是什么，怎么走",
+          "level": 1
+        },
+        {
+          "id": "wu-shenme-yuan-xi-mei-you-q-cache",
+          "title": "五、为什么没有 Q Cache",
+          "level": 1
+        },
+        {
+          "id": "liu-kv-cache-dian-duo-xian-cun",
+          "title": "六、KV Cache 占多少显存",
+          "level": 1
+        },
+        {
+          "id": "qi-mqa-he-gqa",
+          "title": "七、MQA 和 GQA",
+          "level": 1
+        }
+      ],
+      "body_sha256": "7750efc023dfdaea117f9a8f3e14a2ec7f73dfa602a3e7685e3122a1638fbe24"
+    },
+    {
       "id": "grpo-family",
       "url": "/grpo-family.html",
       "title": "其实只有一个算法：从一道题看懂 GRPO、RLOO、DAPO、GSPO",
@@ -1552,14 +1607,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 17
+      "count": 18
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 17
+      "count": 18
     },
     {
       "name": "diffusion",

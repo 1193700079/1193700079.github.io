@@ -1,0 +1,49 @@
+---
+layout: "blog-post"
+post_id: "attention-flash-kvcache"
+title: "Flash Attention 和 KV Cache：大模型面试的 Attention 双题"
+description: '大模型面试里 Attention 最常问的两道题：训练阶段 Flash Attention 为什么快，推理阶段 KV Cache 怎么省重复计算。这篇把 Flash Attention 的 HBM/SRAM 分块原理和 softmax 平移不变性推导讲透，再把 KV Cache 的预填充/生成两阶段、为什么没有 Q Cache、显存公式和 MQA/GQA 一次讲清。'
+---
+{% raw %}
+<p>大模型面试里 Attention 这块，翻来覆去就考两道题：<strong>训练阶段为什么用 Flash Attention</strong>，<strong>推理阶段 KV Cache 是怎么回事</strong>。一个解决训练慢、显存爆，一个解决推理重复计算。这篇把两题各自的原理一次讲透。</p>
+<span id="more"></span>
+<h1 id="yi-yuanzhengnanshi-shenme"><a href="#yi-yuanzhengnanshi-shenme" class="headerlink" title="一、原始 Attention 的麻烦"></a>一、原始 Attention 的麻烦</h1>
+<p>vanilla attention 的时间和空间复杂度都是 <strong>O(N²)</strong>，N 是序列长度。序列一变长，两个麻烦同时出现：</p>
+<ul><li>速度慢，N² 直接卡训练吞吐</li><li>中间那张 QK 分数矩阵（N×N）必须整个存在显存里，序列一长显存就爆</li></ul>
+<p>Flash Attention 的动机就是针对这两点：<strong>加速计算，减少显存占用</strong>。要理解它怎么做，得先看 GPU 的存储层级。</p>
+<h1 id="er-hbm-he-sram-de-cengji"><a href="#er-hbm-he-sram-de-cengji" class="headerlink" title="二、HBM 和 SRAM 的层级"></a>二、HBM 和 SRAM 的层级</h1>
+<table><thead><tr><th></th><th>HBM</th><th>SRAM</th></tr></thead><tbody><tr><td>是什么</td><td>高带宽显存（GPU 主显存）</td><td>片上静态随机存取存储器</td></tr><tr><td>容量</td><td>约 40GB</td><td>约 20MB</td></tr><tr><td>速度</td><td>慢</td><td>快十几倍</td></tr></tbody></table>
+<p>原始 attention 的做法是：把 Q、K、V 从 HBM 读出来，算出整个 N×N 的分数矩阵，写回 HBM，再算 softmax，再写回 HBM，再乘 V。数据在 HBM 和计算单元之间反复搬运，<strong>瓶颈不在算，在搬运</strong>。</p>
+<p>Flash Attention 的思路：把 Q、K、V <strong>按块切分</strong>，每次取一小块从 HBM 加载到 SRAM，在片上把这块的 attention 算完，再把结果更新回 HBM。搬运量从 O(N²) 降到 O(N²/块大小)，而且块在片上循环使用，HBM 读写次数大幅下降。</p>
+<h1 id="san-softmax-de-pingyi-bu-bianxing"><a href="#san-softmax-de-pingyi-bu-bianxing" class="headerlink" title="三、softmax 的平移不变性"></a>三、softmax 的平移不变性</h1>
+<p>分块计算有一个绕不开的问题：softmax 的分母需要对<strong>所有</strong>块求和，但分块计算时手里只有当前块的分数。怎么办？</p>
+<p>靠 softmax 的<strong>平移不变性</strong>：分子分母同时减去同一个常数 β，等式不变：</p>
+<blockquote><p>softmax(x) = softmax(x − β)</p></blockquote>
+<p>工程上算 softmax 时本来就习惯先减去最大值，保证数值稳定。那问题就变成：<strong>怎么在分块计算的前提下，用每块的局部最大值表示出全局的最大值</strong>。</p>
+<p>推一下。设全局向量 x 的下标从 1 到 B1+B2，切成两段：第一段到 B1，第二段从 B1+1 到 B1+B2。记 M1、M2 为两段的局部最大值，M 为全局最大值。全局 softmax 的分母是：</p>
+<blockquote><p>Σ(1→N) exp(xᵢ − M)</p></blockquote>
+<p>把求和拆成两块，每块加上再减去自己的局部最大值：</p>
+<blockquote><p>Σ(1→B1) exp(xᵢ − M1) · exp(M1 − M) + Σ(B1+1→N) exp(xᵢ − M2) · exp(M2 − M)</p></blockquote>
+<p>这个等式恒等成立。关键在于：每块的求和项 <strong>只需要本块的局部最大值</strong>，块间合并时只需要比较局部最大值、修正一个 exp(Mi − M) 的因子。<strong>全局值完全可以由分块结果逐步合并出来</strong>，这就是 Flash Attention 能在线分块计算的数学基础。</p>
+<h1 id="si-kv-cache-shen-xu-zi-zenme-zou"><a href="#si-kv-cache-shen-xu-zi-zenme-zou" class="headerlink" title="四、KV Cache 是什么，怎么走"></a>四、KV Cache 是什么，怎么走</h1>
+<p>KV Cache 用在<strong>推理阶段</strong>，动机是优化推理性能、支撑更长文本。要理解它，先看 decoder-only 模型的自回归特性。</p>
+<p>生成是逐 token 的：生成第 t 个 token 时，它的输入要拼接之前所有时刻的输入和输出。而 self-attention 的主要计算量在 QKV 这一部分——每个时刻都要对之前所有 token 的 K、V 重新算一遍，<strong>产生大量重复计算</strong>。</p>
+<p>KV Cache 的思想就是<strong>空间换时间</strong>：把每个时刻算出来的 K 和 V 缓存下来，下次直接用，不重算。</p>
+<p>具体走两阶段：</p>
+<ul><li><strong>预填充阶段</strong>（prefill）：生成第一个 token 时，手里只有输入、还没有任何生成 token，此时 KV Cache 为空，要为每个输入 token 在<strong>每一层</strong> Transformer 生成一份 KV 存入缓存。</li><li><strong>生成阶段</strong>（decode）：从第二个 token 开始，每步做两件事：一，用当前 token tᵢ 乘 W_K 更新 K 的缓存、乘 W_V 更新 V 的缓存；二，用当前 token 的 query（tᵢ·W_Q）算下一个 token——q 乘 K 的转置、除以维度开方、softmax、再乘 V、再乘 out 矩阵（多头汇总），加上残差连接得到 t_{i+1} 的 attention 输出，再过 FFN（W1、W2 两个矩阵加激活，同样带残差连接），得到下一个 token 的表示。</li></ul>
+<h1 id="wu-shenme-yuan-xi-mei-you-q-cache"><a href="#wu-shenme-yuan-xi-mei-you-q-cache" class="headerlink" title="五、为什么没有 Q Cache"></a>五、为什么没有 Q Cache</h1>
+<p>这是高频追问：既然 K、V 都缓存了，为什么 Q 不缓存？</p>
+<p>因为每个 token 在生成时<strong>只用到当前这一个 Q</strong>。看 mask 的作用：decoder-only 是自回归结构，生成当前 token 时看不到后面的 token，所以 QK 分数矩阵要做 causal mask——mask 之后是一个<strong>下三角矩阵</strong>。算第 4 个 token 时，只取第 4 行乘 V，用到的 Q 只有 Q₄，但 K 和 V 要用到 K₁~K₄、V₁~V₄ 全部。</p>
+<p>结论：<strong>K、V 的信息被后续所有 token 反复使用，必须缓存；Q 每个时刻只被自己用一次，缓存没有意义</strong>。所以只有 KV Cache。</p>
+<h1 id="liu-kv-cache-dian-duo-xian-cun"><a href="#liu-kv-cache-dian-duo-xian-cun" class="headerlink" title="六、KV Cache 占多少显存"></a>六、KV Cache 占多少显存</h1>
+<p>显存公式：</p>
+<blockquote><p>KV Cache 显存 = 序列长度 × batch size × 2（K 和 V 各一份）× n_heads × d_head × layers × 2（字节，fp16 每值 2 字节）</p></blockquote>
+<p>注意两点：</p>
+<ul><li><strong>layers 是层内 KV Cache</strong>——每一层 Transformer 都各自占一份，层数多就线性放大。</li><li>存储一般是 float16，每个数占 2 字节。</li></ul>
+<p>从这个公式能直接看出问题：模型大（layers 多）、head 维度大、序列长、batch 大，任何一个因素上去，KV Cache 的显存都会变得非常大。于是就有了 MQA 和 GQA。</p>
+<h1 id="qi-mqa-he-gqa"><a href="#qi-mqa-he-gqa" class="headerlink" title="七、MQA 和 GQA"></a>七、MQA 和 GQA</h1>
+<p>动机很朴素：KV Cache 是空间换时间，缓存太大就是负担，得想办法缩小。</p>
+<ul><li><strong>MHA（多头注意力）</strong>：每个 query head 对应一份独立的 K、V，缓存量最大。</li><li><strong>MQA（Multi-Query Attention）</strong>：所有 Q head <strong>共享一份</strong> K、V。缓存最小，但效果有明显折损——实验确认折损真实存在。</li><li><strong>GQA（Grouped-Query Attention）</strong>：折中方案。把 Q head <strong>分成多个组，每组共享一份 K、V</strong>。既减少缓存占用，又保住效果。</li></ul>
+<p>目前较新的模型（包括 Qwen2 这一代）普遍采用 GQA。</p>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Flash Attention 和 KV Cache：大模型面试的 Attention 双题</title>
+    <url>/attention-flash-kvcache.html</url>
+    <content><![CDATA[大模型面试里 Attention 这块，翻来覆去就考两道题：<strong>训练阶段为什么用 Flash Attention</strong>，<strong>推理阶段 KV Cache 是怎么回事</strong>。一个解决训练慢、显存爆，一个解决推理重复计算。这篇把两题各自的原理一次讲透。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>其实只有一个算法：从一道题看懂 GRPO、RLOO、DAPO、GSPO</title>
     <url>/grpo-family.html</url>
     <content><![CDATA[GRPO、RLOO、DAPO、GSPO 四个名字、四篇论文，都说自己在改 GRPO 的一点什么，读起来像四个算法。其实核心机制只有一条：给每个答案算一个「比基准好多少」的推力 A，再据此调概率。这篇从一道 8 个答案的数学题开始，一步步把 A 是什么、基准选谁、GRPO 与 RLOO 差的那一个常数、DAPO 和 GSPO 各修了什么讲清楚。文中所有数字都能用脚本自己跑出来。<span id="more"></span>]]></content>
@@ -43,7 +48,7 @@
   <entry>
     <title>大模型加速优化：从一张全景图到一套方法论</title>
     <url>/llm-accel-panorama.html</url>
-    <content><![CDATA[本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。<span id="more"></span>]]></content>
+    <content><![CDATA[本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从"是什么、为什么、怎么做、有什么坑"讲清楚。先建立全景认知，再逐个深入。<span id="more"></span>]]></content>
   </entry>
   <entry>
     <title>8 卡 PRO 6000 推理实测：为什么「97% 利用率」在骗你</title>

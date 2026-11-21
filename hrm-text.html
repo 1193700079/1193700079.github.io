@@ -1,0 +1,72 @@
+---
+layout: "blog-post"
+post_id: "hrm-text"
+title: "HRM-Text：用 ~40B tokens、~1000 美元从零预训练一个 1B 基础模型"
+description: 'Sapient Intelligence 开源的 HRM-Text 用 ~40B tokens（比对照模型少 1000 倍）+ 1.15B 参数，在 MATH/ARC/DROP 上打到了 56.2/81.9/82.2。int4 量化后 0.6 GiB 可本地跑。这篇讲清它的架构思路、完整基准、和仓库内的预训练启动链路。'
+---
+{% raw %}
+<p>HRM-Text 是 Sapient Intelligence 在 2026 年 5 月开源的一个 <strong>1.15B 参数文本模型</strong>。它的定位不是"又一个 7B 小模型"，而是一个完整的预训练框架——口号是<strong>用大约 1000 美元从零预训练一个基础模型</strong>：训练数据只有 ~40B tokens（比对照的 4–36T tokens 少 1000 倍以上），L 尺寸（0.6B）在 8 张 H100 上跑 50 小时、约 800 美元。这篇把它的架构思路、基准成绩和仓库里的完整预训练流程讲清楚。</p>
+<span id="more"></span>
+<h1 id="hrm-Text-shi-shen-me"><a href="#hrm-Text-shi-shen-me" class="headerlink" title="HRM-Text 是什么"></a>HRM-Text 是什么</h1>
+<p>先给几个官方数字。HRM-Text 基于 HRM 分层递归架构（hierarchical recurrent architecture），在推理类基准上给出了这些成绩（1B，无后训练，纯预训练能力）：</p>
+<table>
+<thead><tr><th>基准</th><th>成绩</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>MATH</td><td>56.2</td><td>数学推理与多步逻辑</td></tr>
+<tr><td>ARC-Challenge</td><td>81.9</td><td>小学科学推理 + 常识</td></tr>
+<tr><td>DROP</td><td>82.2</td><td>数字推理式阅读理解</td></tr>
+<tr><td>MMLU</td><td>60.7</td><td>多领域综合知识与推理</td></tr>
+</tbody>
+</table>
+<p>仓库里还有一份完整的 9 基准结果表（XL 尺寸）：GSM8k 84.7、MATH 56.5、DROP 82.3、MMLU 60.7、ARC-C 81.9、HellaSwag 63.4、Winogrande 72.4、BoolQ 86.2。L 尺寸（0.6B，8 卡）对应：GSM8k 77.6、MATH 51.2、DROP 78.6、MMLU 56.6、ARC-C 75.9、HellaSwag 52.7、Winogrande 67.6、BoolQ 85.0。</p>
+<p>官方自己强调这是 <strong>proof-of-concept、无 post-training</strong>——这些数字反映的是架构本身的能力，不是调出来的。应用域主打量化金融、AI4S、医疗、气候和具身智能。模型有同架构的符号模型 HRM-Symbolic 姊妹篇。</p>
+<h1 id="zui-zhong-de-yi-guan-jian-dian"><a href="#zui-zhong-de-yi-guan-jian-dian" class="headerlink" title="最扎心的一个关键点"></a>最扎心的一个关键点</h1>
+<p>它的卖点不是"小模型也能跑"，而是<strong>数据效率</strong>：训练数据约 40B tokens，而拿来对比的开源模型用了 4–36T tokens。换句话说，用 1/100 到 1/1000 的数据和算力，做到了推理基准上跟大几倍的模型相当。这正是 HRM 分层递归 + 隐空间推理（latent space reasoning）这条路线想证明的事：<strong>预训练效率可以脱离"堆数据堆 FLOPs"的 scaling 逻辑</strong>。</p>
+<p>推理侧同样能打：int4 量化后 <strong>0.6 GiB</strong> 就能本地跑，不依赖云。对 AI4S、量化金融这类需要私有部署的场景，0.6 GiB 的体积本身就是卖点。</p>
+<h1 id="ce-shi-ben-biao"><a href="#ce-shi-ben-biao" class="headerlink" title="测试基准"></a>测试基准</h1>
+<p>官方用两张散点图说明数据效率：一张是<strong>训练 token 数 vs 基准均值</strong>，另一张是<strong>训练 FLOPs vs 基准均值</strong>。两张图的逻辑都是左上角更好——用更少的 token / FLOPs 拿到更高的基准均值。HRM 的 FLOPs 计数包含了 H-L 递归前向，所以不是虚低。</p>
+<p>这正好呼应了仓库名《Efficient Pretraining Beyond Scaling》——它要证明的是"在 scaling 之外还有更高效的路"，而不是"scaling 法下把 1B 做到最好"。如果只拿 MMLU 60.7 这个数字和 Llama-3.2-1B 比，看不出差异；但放在 token 数维度上，差异就是 1000 倍。</p>
+<h1 id="xiao-kuang-de-kuai-su-qi-dong"><a href="#xiao-kuang-de-kuai-su-qi-dong" class="headerlink" title="小规模的快速启动（仓库内）"></a>小规模的快速启动（仓库内）</h1>
+<p>仓库给的不是"下载一个模型"的脚本，而是<strong>从零预训练</strong>的完整链路。这是它最有意思的地方。</p>
+<p><strong>两个尺寸档位</strong>：</p>
+<table>
+<thead><tr><th>尺寸</th><th>参数量</th><th>GPU 配置</th><th>时间</th><th>成本（$2/H100 时）</th></tr></thead>
+<tbody>
+<tr><td>L</td><td>0.6B</td><td>8×H100 单节点</td><td>约 50 小时</td><td>~$800</td></tr>
+<tr><td>XL</td><td>1B</td><td>16×H100 双节点</td><td>约 46 小时</td><td>~$1472</td></tr>
+</tbody>
+</table>
+<p><strong>数据准备</strong>由姊妹仓库 <code>data_io</code> 负责（清洗、分词、分层采样）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre>1
+2</pre></td><td class="code"><pre><span class="line">cd &lt;DATA_IO_PATH&gt;<br/></span>
+<span class="line">python sample_tokenized.py epochs=4 output_path=/dev/shm/sampled &gt; show_analytics.md<br/></span></pre></td></tr></table></figure>
+<p>训练默认 <code>epochs=4</code>，采样命令的 epochs 必须和训练配置一致。<strong>单机</strong>：把采样输出放在本机共享内存 <code>/dev/shm/sampled</code>，数据和训练同节点。<strong>多节点</strong>：tokenized 数据放共享存储，每个节点各自独立做分层采样——采样是确定性的，每个节点得到的内存数据一致。</p>
+<p><strong>训练启动</strong>（推荐官方 Docker 镜像 <code>sapientai/hrm-text:latest</code>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre>1
+2
+3</pre></td><td class="code"><pre><span class="line">OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \\<br/></span>
+<span class="line">torchrun --nproc_per_node=8 pretrain.py \\<br/></span>
+<span class="line">  arch/size@arch=L lr=2.5e-4 global_batch_size=172032<br/></span></pre></td></tr></table></figure>
+<p>多节点就加 <code>--nnodes</code> / <code>--node_rank</code> / <code>--master_addr</code>。注意 attention 路径依赖 FlashAttention 3，所以<strong>预期训练硬件是 Hopper 系 GPU</strong>（H100/H200）。</p>
+<p><strong>评估与导出</strong>：评估脚本自动加载最新 checkpoint，默认用 EMA 权重。需要 HF 格式时用 <code>python -m conversion.convert_to_hf</code> 转。原生的 HF Transformers 支持已合并，等待下个 release；vLLM 支持在推进中。</p>
+<h1 id="jia-gou-yu-xiao-mo-xing-lan-tu"><a href="#jia-gou-yu-xiao-mo-xing-lan-tu" class="headerlink" title="架构与小模型轮廓（仓库内）"></a>架构与小模型轮廓（仓库内）</h1>
+<p>模型配置在 <code>config/arch/net</code>，HRM 本体是 <code>hrm</code>；同仓库还内置了多个 baseline 用于消融：标准 Transformer、TRM（Tiny Recursive Model）、RINS（Recursive Inference Scaling）、Universal Transformer。其中 <code>trm_match_recurrence</code> 是专门配成和 HRM 同递归次数但参数量减半的对照组。</p>
+<p>HRM / RINS 在 <code>half_layers: true</code> 时会把配置的层数平分成 H 和 L 两个模块——这就是"分层递归"的结构：H 模块做高层推理，L 模块做低层处理，递归次数决定推理深度。这也是 FLOPs 计数包含 H-L 递归前向的原因。</p>
+<p>尺寸档位（XL 之外还有更大配置）：</p>
+<table>
+<thead><tr><th>档位</th><th>层数</th><th>hidden</th><th>heads</th></tr></thead>
+<tbody>
+<tr><td>B</td><td>12</td><td>1024</td><td>8</td></tr>
+<tr><td>L</td><td>24</td><td>1280</td><td>10</td></tr>
+<tr><td>XL</td><td>32</td><td>1536</td><td>12</td></tr>
+<tr><td>XXL</td><td>72</td><td>1792</td><td>14</td></tr>
+<tr><td>XXL_wide</td><td>32</td><td>2560</td><td>20</td></tr>
+</tbody>
+</table>
+<p>训练框架用的是 FSDP2，配 PrefixLM 序列打包和 FlashAttention 3 核，评估走 Hugging Face <code>datasets</code>（按需求下载基准数据）。社区贡献的 MoE 探索（64×8）挂在 <code>experimental/moe-64x8</code> 分支上。</p>
+<h1 id="yi-wai"><a href="#yi-wai" class="headerlink" title="意外"></a>意外</h1>
+<p>这篇读下来的最大感受：<strong>"~40B tokens + 0.6 GiB int4 + 1B 参数"</strong>这个组合是稀缺的。市面上大多数 1B 模型要么靠海量数据堆出来，要么量化后体积翻几倍。HRM-Text 把两条同时压到了极值。如果 8 卡 H100 跑 50 小时就能复现出一个能用的小模型，这个门槛比"下载权重跑推理"低得多——它要证明的路线是<strong>预训练本身可以便宜到个人可负担</strong>。这也是官方把应用域放在 AI4S、量化金融这些"需要私有部署 + 推理要快"的场景的原因。</p>
+<p>两个值得留意的细节：一是<strong>int4 0.6 GiB</strong>这个数字意味着端侧部署完全可行，比同参数的标准 1B 量化后（~0.7 GiB 起步）小得多；二是<strong>仓库内自带 5 个 baseline</strong>（Transformer、TRM、RINS、UT、match-recurrence TRM），这是做架构对比研究的标配配置，不是只给一个成品。</p>
+<p>后续如果 HRM-Symbolic 放出，可以对比同一架构在不同模态上的表现。对想自己预训练一个"够用的基础模型"的团队来说，这套代码是目前最接近"开箱即用"的参考实现之一。</p>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

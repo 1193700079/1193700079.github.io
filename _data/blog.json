@@ -1,6 +1,56 @@
 {
   "posts": [
     {
+      "id": "hrm-text",
+      "url": "/hrm-text.html",
+      "title": "HRM-Text：用 ~40B tokens、~1000 美元从零预训练一个 1B 基础模型",
+      "date": "2026-11-21T12:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "<p>HRM-Text 是 Sapient Intelligence 在 2026 年 5 月开源的一个 <strong>1.15B 参数文本模型</strong>。它的定位不是\"又一个 7B 小模型\"，而是一个完整的预训练框架——口号是<strong>用大约 1000 美元从零预训练一个基础模型</strong>：训练数据只有 ~40B tokens（比对照的 4–36T tokens 少 1000 倍以上），L 尺寸（0.6B）在 8 张 H100 上跑 50 小时、约 800 美元。这篇把它的架构思路、基准成绩和仓库里的完整预训练流程讲清楚。</p>",
+      "minutes": 5,
+      "toc": [
+        {
+          "id": "hrm-Text-shi-shen-me",
+          "title": "HRM-Text 是什么",
+          "level": 1
+        },
+        {
+          "id": "zui-zhong-de-yi-guan-jian-dian",
+          "title": "最扎心的一个关键点",
+          "level": 1
+        },
+        {
+          "id": "ce-shi-ben-biao",
+          "title": "测试基准",
+          "level": 1
+        },
+        {
+          "id": "xiao-kuang-de-kuai-su-qi-dong",
+          "title": "小规模的快速启动（仓库内）",
+          "level": 1
+        },
+        {
+          "id": "jia-gou-yu-xiao-mo-xing-lan-tu",
+          "title": "架构与小模型轮廓（仓库内）",
+          "level": 1
+        },
+        {
+          "id": "yi-wai",
+          "title": "意外",
+          "level": 1
+        }
+      ],
+      "body_sha256": "8242ccccec7dce7b309d17df5f750e678dd3de72b6641a90b7c6725169bc11a3"
+    },
+    {
       "id": "no-long-context-needed",
       "url": "/no-long-context-needed.html",
       "title": "不需要长上下文：砍掉 7 倍成本，SWE-bench 还涨了 4.6 分",
@@ -1722,14 +1772,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 20
+      "count": 21
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 20
+      "count": 21
     },
     {
       "name": "diffusion",

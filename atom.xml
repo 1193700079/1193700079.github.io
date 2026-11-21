@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
+    <title>HRM-Text：用 ~40B tokens、~1000 美元从零预训练一个 1B 基础模型</title>
+    <link href="https://1193700079.github.io/hrm-text.html"/>
+    <id>https://1193700079.github.io/hrm-text.html</id>
+    <published>2026-11-21T12:00:00.000Z</published>
+    <updated>2026-11-21T12:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;HRM-Text 是 Sapient Intelligence 在 2026 年 5 月开源的一个 &lt;strong&gt;1.15B 参数文本模型&lt;/strong&gt;。它的定位不是"又一个 7B 小模型"，而是一个完整的预训练框架——口号是&lt;strong&gt;用大约 1000 美元从零预训练一个基础模型&lt;/strong&gt;：训练数据只有 ~40B tokens（比对照的 4–36T tokens 少 1000 倍以上），L 尺寸（0.6B）在 8 张 H100 上跑 50 小时、约 800 美元。这篇把它的架构思路、基准成绩和仓库里的完整预训练流程讲清楚。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>不需要长上下文：砍掉 7 倍成本，SWE-bench 还涨了 4.6 分</title>
     <link href="https://1193700079.github.io/no-long-context-needed.html"/>
     <id>https://1193700079.github.io/no-long-context-needed.html</id>
@@ -97,7 +107,7 @@
     <published>2026-11-17T11:00:00.000Z</published>
     <updated>2026-11-17T11:00:00.000Z</updated>
     <summary type="html">Nace.AI 开源了四个决策模型：用户给定选项集，模型一次前向直接返回概率分布，不生成、不解码、不解析。最大型号 Max 基于 Qwen3.8-27B，去掉因果掩码换成双向注意力，配一个无偏置 255 维读出头，183ms 出答案，在 Decision Index 上刷新决策模型纪录。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -107,7 +117,7 @@
     <published>2026-11-17T10:00:00.000Z</published>
     <updated>2026-11-17T10:00:00.000Z</updated>
     <summary type="html">基元律动联合无问芯穹与北大、上交、清华开源 InfraRSI：首个面向大模型分布式训练基础设施的递归自我改进 Agent。一条命令完成基线剖析、启动参数与源码补丁协同搜索、16 项正确性复验，H100/H200 四大负载上 1.83× 几何平均加速（最高 2.75×），MFU 从 17.4% 拉到 30.0%。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -116,7 +126,7 @@
     <id>https://1193700079.github.io/llm-accel-panorama.html</id>
     <published>2026-11-16T14:00:00.000Z</published>
     <updated>2026-11-16T14:00:00.000Z</updated>
-    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。</summary>
+    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从"是什么、为什么、怎么做、有什么坑"讲清楚。先建立全景认知，再逐个深入。</summary>
     <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
@@ -127,7 +137,7 @@
     <published>2026-11-16T13:00:00.000Z</published>
     <updated>2026-11-16T13:00:00.000Z</updated>
     <summary type="html">nvidia-smi 显示 97% 利用率，功耗却只有 170W/600W。SGLang 长 context 单流 decode 的假满负载、被 /metrics 404 刷屏淹掉的真实 batch 行、TTFT/TPOT 观测口径、32 并发到底扛多少用户，以及 HiCache 单机版与跨机分布式四件套的差别。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -137,7 +147,7 @@
     <published>2026-11-16T12:00:00.000Z</published>
     <updated>2026-11-16T12:00:00.000Z</updated>
     <summary type="html">TileLang 把 tile 提为一等公民：数据流显式写、调度交编译器。ICLR 2026 Oral，对照 DeepInfer 真实算子讲透。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -147,7 +157,7 @@
     <published>2026-11-16T12:00:00.000Z</published>
     <updated>2026-11-16T12:00:00.000Z</updated>
     <summary type="html">同一模型换 harness 比换模型掉分还狠。FineEnvs 用 capture proxy 把 Claude Code/Codex/OpenCode 变成黑盒 RL 环境，2xH100 上 GRPO 的完整配方与结果。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -157,7 +167,7 @@
     <published>2026-11-16T11:30:00.000Z</published>
     <updated>2026-11-16T11:30:00.000Z</updated>
     <summary type="html">基于 GGML 的 C/C++ 扩散模型推理框架，类比 llama.cpp：多模型、多后端、内存优化与二次开发方向。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -167,7 +177,7 @@
     <published>2026-11-16T11:00:00.000Z</published>
     <updated>2026-11-16T11:00:00.000Z</updated>
     <summary type="html">阅读 MIG 硬件切卡与动态 TP 两条路线，解释为什么 RTX PRO 6000 这类工作站卡都不能运行时重组张量并行。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -177,7 +187,7 @@
     <published>2026-11-16T10:00:00.000Z</published>
     <updated>2026-11-16T10:00:00.000Z</updated>
     <summary type="html">梳理强化学习与扩散模型的结合：从语言、图像和视频，到机器人与科学建模。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -187,7 +197,7 @@
     <published>2026-11-16T09:00:00.000Z</published>
     <updated>2026-11-16T09:00:00.000Z</updated>
     <summary type="html">阅读 LeapQuant 的递归态量化方法，梳理按窗口量化、补偿 Token 与残差平滑三项免训练技巧。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
   <entry>
@@ -197,7 +207,7 @@
     <published>2026-11-16T08:00:00.000Z</published>
     <updated>2026-11-16T08:00:00.000Z</updated>
     <summary type="html">围绕 Qwen 3.8 27B 的微调性能，整理算子分析、融合内核与一维打包批次的实践。</summary>
-    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/技术阅读/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
 </feed>

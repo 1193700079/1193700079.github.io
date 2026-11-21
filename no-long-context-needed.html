@@ -1,0 +1,47 @@
+---
+layout: "blog-post"
+post_id: "no-long-context-needed"
+title: "不需要长上下文：砍掉 7 倍成本，SWE-bench 还涨了 4.6 分"
+description: '这篇 NVIDIA 研究院的论文一句话：前沿模型做长程任务时，把上下文压到 16K–50K，任务准确率几乎不丢，生成成本能砍到 1/3 到 1/7。这篇精读把三个研究问题、三种上下文管理策略（全历史 / 压缩 / 单动作），和云 + 本地的成本曲线一次讲清。'
+---
+{% raw %}
+<p>这篇论文叫 <strong>《You don’t need long context》</strong>（arXiv 2611.05306，2026-11-03），作者群来自 NVIDIA 研究院，挂在「Project Moonshot: Local Frontier Intelligence」下。它一句话就能概括：<strong>前沿语言模型在做长程任务时，把上下文压到 16K–50K，任务准确率几乎不丢，而生成成本能砍到 1/3 到 1/7。</strong>这篇把它当成技术阅读精读，把三个研究问题、三种上下文管理策略，和成本曲线一次讲清。</p>
+<span id="more"></span>
+<h1 id="yi-wei-shen-me-chang-shang-xia-wen-zhi-jia"><a href="#yi-wei-shen-me-chang-shang-xia-wen-zhi-jia" class="headerlink" title="一、为什么长上下文这么贵"></a>一、为什么长上下文这么贵</h1>
+<p>根子在于<strong>自回归生成的深度成本</strong>：生成第 d 个 token 时，attention 要把之前所有 token 的 KV 都读一遍，成本随深度近似线性增长。KV cache 的显存占用也是线性涨的。所以输入越长，后面每个输出 token 生成得越慢、越贵、越吃显存。</p>
+<p>论文 Figure 1 用 H100 实测定量了这件事：在云 GPU 上按 $3.85/卡时计价，把上下文从 16K 拉到 256K，<strong>每生成 1M 输出 token 的成本</strong>——</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">GLM 5.2 (INT4)          16K→256K   贵 3.6×</span><br><span class="line">Kimi K2.6 (INT4+FP8KV)  16K→256K   贵 5.6×</span><br><span class="line">Qwen 3 Coder Next(BF16) 16K→256K   贵 7.0×</span><br></pre></td></tr></table></figure>
+<p>注意这个幅度，3.6×–7×，已经比得上激进的量化或结构化稀疏化带来的收益了。而且这件事被零售 token 价格<strong>藏起来了</strong>——厂商按「每 1M token 固定价」收费，你根本不知道输入长短对真实成本的影响。本地推理也一样：Figure 2 显示在 DGX Spark 上，多个模型的 inter-token 延迟在长 context 下直接翻倍，显存占用也翻倍。</p>
+<h1 id="er-chang-shang-xia-wen-ru-he-dai-lai"><a href="#er-chang-shang-xia-wen-ru-he-dai-lai" class="headerlink" title="二、长上下文从哪来"></a>二、长上下文从哪来</h1>
+<p>论文把长上下文的来源分成两类负载，这是全文的骨架：</p>
+<ul><li><strong>LCW1 长程任务</strong>：任务需要很多步动作才能完成，每一步的模型输出和工具结果都被追加进对话，历史越滚越长。</li><li><strong>LCW2 长输入任务</strong>：任务本身带一个很大的输入（长文档、长代码库），哪怕模型只做一次推理，输入就已经塞满了 context。</li></ul>
+<p>论文的核心论点：<strong>这两类负载都不需要「一直把整个历史/整个输入留在 context 里」</strong>。于是提出三个研究问题。</p>
+<h1 id="san-san-ge-yan-ji-wen-ti"><a href="#san-san-ge-yan-ji-wen-ti" class="headerlink" title="三、三个研究问题"></a>三、三个研究问题</h1>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">RQ1  长程任务能不能不做长 context 就完成？</span><br><span class="line">RQ2  长输入任务能不能不做长 context 就完成？</span><br><span class="line">RQ3  长程任务能不能做到「每个 context 只取一个动作」？</span><br></pre></td></tr></table></figure>
+<h1 id="si-si-chu-zi-fang-fa"><a href="#si-si-chu-zi-fang-fa" class="headerlink" title="四、四种上下文管理策略"></a>四、四种上下文管理策略</h1>
+<p>论文定义了三种上下文管理策略，从「全留」到「每步重置」：</p>
+<ul><li><strong>FHA（Full-History Accumulation）</strong>：基线，所有动作和观察都追加进一段对话，从不删。mini-swe-agent / mini-agent 的默认模式。</li><li><strong>EoCC（End-of-Conversation Compaction）</strong>：对话撞到压缩阈值时，让模型产出一份「有界的、与任务相关的状态摘要」，开一段只含「原始任务 + 摘要」的新对话继续。阈值写成分「总 context 上限 / 压缩阈值」。</li><li><strong>SAC（Single-Action Compaction）</strong>：最激进。每段对话只含「任务 + 当前语义状态」，模型恰好执行<strong>一个</strong>环境动作，观察结果，更新语义状态，然后<strong>整段丢弃</strong>，为下一步开新对话。</li></ul>
+<p>「短」的定义：相对 256K+ 的前沿窗口，16K–50K 就算短——这个量级本身已经能装下一整部《老人与海》。</p>
+<h1 id="wu-wen-ti-1-chang-cheng-ren-mu-bu-yao-chang"><a href="#wu-wen-ti-1-chang-cheng-ren-mu-bu-yao-chang" class="headerlink" title="五、问题 1：长程任务要长 context 吗"></a>五、问题 1：长程任务要长 context 吗</h1>
+<p>在 6 个长程基准上，用 EoCC 对照 FHA 基线。模型是 Claude Opus 4.5 和 GPT 5.6 Sol，阈值从 48K/36K 一路压到 16K/12K（部分到 8K/6K）。</p>
+<p><strong>准确率</strong>：Opus 4.5 相对基线在 −3.7 到 +5.6 个百分点之间摆动，GPT 5.6 Sol 在 −3.3 到 +4.4。关键是这两个区间看着吓人，但<strong>22 个阈值配置里，每个模型最多只有 5 个掉超过 2 个百分点</strong>。也就是说压到 16K/12K，绝大多数基准准确率几乎不变。</p>
+<p><strong>成本</strong>：Opus 4.5 省 2.2×–8.8×，GPT 5.6 Sol 省 2.4×–5.0×。这些是「只用短 context 窗口部署」带来的估算零售成本节省。</p>
+<h1 id="liu-wen-ti-2-chang-shu-ru-ren-mu-bu-yao"><a href="#liu-wen-ti-2-chang-shu-ru-ren-mu-bu-yao" class="headerlink" title="六、问题 2：长输入任务要长 context 吗"></a>六、问题 2：长输入任务要长 context 吗</h1>
+<p>把长输入从对话里拿出来，<strong>存成文件</strong>（input01.txt、input02.txt），让 agent 用 sed / awk / head <strong>选择性地读</strong>需要的部分——把长输入负载降成「长程 + 选择性阅读」。在 7 个长输入基准上对照「整段塞进去」的基线。</p>
+<p><strong>准确率</strong>：Opus 4.5 从 −0.4 到 +40.0 个百分点，GPT 5.6 Sol 从 +1.0 到 +30.9。注意是<strong>正区间为主</strong>——选择性阅读反而经常更好，因为模型不用在一堆无关文本里找信号。</p>
+<p><strong>成本</strong>：Opus 4.5 省 6.5×–54.6×，GPT 5.6 Sol 省 4.4×–233.3×。这是「选择性阅读 + 短 context 部署」的叠加。</p>
+<p><strong>对话长度</strong>：Figure 7/8 把对话总长对文档长度画图。文档长度轴是<strong>对数</strong>的，对话长度轴是<strong>线性</strong>的。y=x 参考线在这些坐标里是指数上升的，但实测对话长度几乎不随文档变长而增长——文档从 8K 到 2M，agent 实际读的量始终压在一个很窄的带里。这正是「输入大 ≠ 需要的信息多」的直接证据。</p>
+<h1 id="qi-wen-ti-3-mei-ge-context-zhi-qu-yi-dong"><a href="#qi-wen-ti-3-mei-ge-context-zhi-qu-yi-dong" class="headerlink" title="七、问题 3：每个 context 只取一个动作"></a>七、问题 3：每个 context 只取一个动作</h1>
+<p>SAC 是极端版：每段对话「任务 + 语义状态 → 恰好一个动作 → 观察 → 更新状态 → 整段丢弃」。在 SWE-bench Verified 和 Terminal-Bench 2.1 上测。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Claude Opus 4.5:  SWE-bench 70.0% → 70.2%   Terminal-Bench 47.2% → 51.8% (↑4.6)</span><br><span class="line">GPT 5.6 Sol:      SWE-bench 84.4% → 82.4%   Terminal-Bench 87.6% → 84.3% (↓)</span><br><span class="line">SAC 峰值实时 context：7–9K 中位，15–37K 最大（基线 130–200K）</span><br></pre></td></tr></table></figure>
+<p>Opus 4.5 不仅没掉，Terminal-Bench 还<strong>涨了 4.6 分</strong>；GPT 5.6 Sol 小幅掉 2.0–3.3 分。但两个模型在每个 context 里只取一个动作、只带一份紧凑语义状态，峰值实时 context 从 130–200K 砸到 7–9K。这是「压缩频率推到相对极限，任务准确率却没有灾难性后果」的最强证据。</p>
+<h1 id="ba-SSSM-yu-SSM-de-qu-bie"><a href="#ba-SSSM-yu-SSM-de-qu-bie" class="headerlink" title="八、SSSM：语义状态空间模型"></a>八、SSSM：语义状态空间模型</h1>
+<p>由问题 3 引出的概念：如果强模型靠频繁压缩甚至每步压缩还能保持性能，<strong>能不能所有长 context 工作流都被压成「单动作 + 语义状态」</strong>？论文提出 SSSM（Semantic State Space Model）：一个被后训练成（1）读懂自然语言状态描述、（2）推理下一个动作、（3）执行动作、（4）登记结果、（5）把结论/决策/结果写回状态描述——好让<strong>另一个全新推理实例</strong>能接力继续的模型。</p>
+<p>它和传统 SSM（状态空间模型）的区别：SSM 在 token 之间维护的是<strong>黑盒神经状态</strong>，SSSM 维护的是<strong>可读的自然语言状态</strong>（所以叫「语义」）。论文还推断：SSSM 训练更省数据，因为不用教模型「去 context 的某个片段找答案」。最后抛出一句反问：<strong>那为什么要训练全历史累积模型？</strong></p>
+<h1 id="jiu-bu-yi-yi-di"><a href="#jiu-bu-yi-yi-di" class="headerlink" title="九、不意的点"></a>九、不意的点</h1>
+<p>压缩是<strong>有损</strong>的。构造一个「工具抛硬币并汇报结果」的任务，压缩预算固定，agent 必然在某个压缩后丢掉早期某次硬币结果；若之后要查第 i 次结果，必然失败。所以论文结论不是「你永远不需要历史」，而是<strong>「你不需要把整段历史留在 context 里」</strong>。把对话历史存下来、用选择性阅读工具按需查，就把「查历史」降成了长输入任务——又回到了问题 2。这是全文逻辑自洽的关键一环。</p>
+<h1 id="shi-mian-shi-zen-me-da"><a href="#shi-mian-shi-zen-me-da" class="headerlink" title="十、面试怎么答"></a>十、面试怎么答</h1>
+<p>把全文串成一段可复述的答案：</p>
+<blockquote><p>长上下文贵，因为自回归生成的深度成本和 KV cache 都随 context 线性涨：云 GPU 上把窗口从 16K 拉到 256K，每生成 1M 输出 token 贵 3.6–7 倍，本地延迟直接翻倍，零售固定价把这层成本藏起来了。长 context 来自两类负载——长程任务（历史越滚越长）和长输入任务（输入本身就大）。论文证明前者用「对话撞到阈值就压缩成有界语义状态、开新对话」的 EoCC，把准确率守在 −4 到 +6 个百分点、成本省 2–9 倍；后者用「把输入存成文件、让 agent 选择性读」，准确率不降反升、成本省最高 233 倍，对话长度几乎不随文档变长。极端版 SAC「每个 context 只取一个动作」下，Opus 4.5 的 SWE-bench 持平、Terminal-Bench 还涨 4.6 分，峰值实时 context 从 130–200K 砸到 7–9K。它引出 SSSM：把状态存成可读的自然语言描述，让新推理实例接力，比全历史累积模型更省 token 也更省训练数据。唯一的意：压缩有损，所以结论是「不需要整段历史在 context 里」，不是「永远不用查历史」——查历史本身就是长输入任务。</p></blockquote>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

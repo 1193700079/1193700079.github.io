@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
+    <title>不需要长上下文：砍掉 7 倍成本，SWE-bench 还涨了 4.6 分</title>
+    <link href="https://1193700079.github.io/no-long-context-needed.html"/>
+    <id>https://1193700079.github.io/no-long-context-needed.html</id>
+    <published>2026-11-21T08:00:00.000Z</published>
+    <updated>2026-11-21T08:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;这篇 NVIDIA 研究院的论文一句话：&lt;strong&gt;前沿模型做长程任务时，把上下文压到 16K–50K，任务准确率几乎不丢，生成成本能砍到 1/3 到 1/7。&lt;/strong&gt;这篇精读把三个研究问题、三种上下文管理策略（全历史 / 压缩 / 单动作），和云 + 本地的成本曲线一次讲清。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>什么是 Rollout？RL 训练里的经验采样，四步流程 + 头号瓶颈</title>
     <link href="https://1193700079.github.io/rollout-rl.html"/>
     <id>https://1193700079.github.io/rollout-rl.html</id>

@@ -24,87 +24,91 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
-  <url>
+<url>
+    <loc>https://1193700079.github.io/daisyrose-27b.html</loc>
+    <lastmod>2026-11-23</lastmod>
+  </url>
+<url>
     <loc>https://1193700079.github.io/hrm-text.html</loc>
     <lastmod>2026-11-21</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/no-long-context-needed.html</loc>
     <lastmod>2026-11-21</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/rollout-rl.html</loc>
     <lastmod>2026-11-20</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/attention-flash-kvcache.html</loc>
     <lastmod>2026-11-20</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/grpo-family.html</loc>
     <lastmod>2026-11-20</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/muon-optimizer.html</loc>
     <lastmod>2026-11-20</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/muir-linear-attention.html</loc>
     <lastmod>2026-11-19</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/duo-rwm.html</loc>
     <lastmod>2026-11-19</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/rsi-self-evolution.html</loc>
     <lastmod>2026-11-17</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/obliteration-ai.html</loc>
     <lastmod>2026-11-17</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/drex-decision-models.html</loc>
     <lastmod>2026-11-17</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/infrarsi.html</loc>
     <lastmod>2026-11-17</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/llm-accel-panorama.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/sglang-pro6000-load-test.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/tilelang.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/multi-harness-rl.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/stable-diffusion-cpp.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/mig-dynamic-tp.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/rl-diffusion-survey.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/leapquant.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>
-  <url>
+<url>
     <loc>https://1193700079.github.io/qwen-sft-6x.html</loc>
     <lastmod>2026-11-16</lastmod>
   </url>

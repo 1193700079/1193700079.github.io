@@ -1,12 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
+    <title>DaisyRose-27B：只用强化学习、零蒸馏的多模态推理模型，Terminal Bench 4.1 从 5.6 到 12.0</title>
+    <link href="https://1193700079.github.io/daisyrose-27b.html"/>
+    <id>https://1193700079.github.io/daisyrose-27b.html</id>
+    <published>2026-11-23T14:00:00.000Z</published>
+    <updated>2026-11-23T14:00:00.000Z</updated>
+    <summary type="html">DaisyRose-27B 是 RadixArk 的第一个开源模型：一个&lt;strong&gt;多模态推理模型&lt;/strong&gt;，底座是 Qwen3.8-27B，但后训练&lt;strong&gt;只用了强化学习&lt;/strong&gt;——没有监督微调（SFT）、没有从更大的模型蒸馏。约 1,200 个精挑的长程 agent 任务、会话最长 1M token、144 张 H200 训了 18 天，把 Terminal Bench 4.1 的 pass@1 从 5.6 拉到 12.0，图像理解、tokenizer、chat template 和 256K 上下文全部原样保留，是 Qwen3.8-27B 的&lt;strong&gt;即插即用替换&lt;/strong&gt;。权重 Apache-2.0 开放，BF16 / FP8 / NVFP4 三种精度，社区量化生态也已经齐了。</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
+  <entry>
     <title>HRM-Text：用 ~40B tokens、~1000 美元从零预训练一个 1B 基础模型</title>
     <link href="https://1193700079.github.io/hrm-text.html"/>
     <id>https://1193700079.github.io/hrm-text.html</id>
     <published>2026-11-21T12:00:00.000Z</published>
     <updated>2026-11-21T12:00:00.000Z</updated>
-    <summary type="html">&lt;p&gt;HRM-Text 是 Sapient Intelligence 在 2026 年 5 月开源的一个 &lt;strong&gt;1.15B 参数文本模型&lt;/strong&gt;。它的定位不是"又一个 7B 小模型"，而是一个完整的预训练框架——口号是&lt;strong&gt;用大约 1000 美元从零预训练一个基础模型&lt;/strong&gt;：训练数据只有 ~40B tokens（比对照的 4–36T tokens 少 1000 倍以上），L 尺寸（0.6B）在 8 张 H100 上跑 50 小时、约 800 美元。这篇把它的架构思路、基准成绩和仓库里的完整预训练流程讲清楚。&lt;/p&gt;</summary>
+    <summary type="html">&lt;p&gt;HRM-Text 是 Sapient Intelligence 在 2026 年 5 月开源的一个 &lt;strong&gt;1.15B 参数文本模型&lt;/strong&gt;。它的定位不是&quot;又一个 7B 小模型&quot;，而是一个完整的预训练框架——口号是&lt;strong&gt;用大约 1000 美元从零预训练一个基础模型&lt;/strong&gt;：训练数据只有 ~40B tokens（比对照的 4–36T tokens 少 1000 倍以上），L 尺寸（0.6B）在 8 张 H100 上跑 50 小时、约 800 美元。这篇把它的架构思路、基准成绩和仓库里的完整预训练流程讲清楚。&lt;/p&gt;</summary>
     <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>
@@ -126,7 +136,7 @@
     <id>https://1193700079.github.io/llm-accel-panorama.html</id>
     <published>2026-11-16T14:00:00.000Z</published>
     <updated>2026-11-16T14:00:00.000Z</updated>
-    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从"是什么、为什么、怎么做、有什么坑"讲清楚。先建立全景认知，再逐个深入。</summary>
+    <summary type="html">本书依据「大模型加速优化技术全景图」逐主题展开。全景图把 LLM 的加速优化技术划成八大板块——训练加速、模型压缩、推理加速、架构优化、长上下文加速、系统与硬件、框架与工具、效果评估。本书就按这八个板块，把每一条技术从&quot;是什么、为什么、怎么做、有什么坑&quot;讲清楚。先建立全景认知，再逐个深入。</summary>
     <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
     <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
   </entry>

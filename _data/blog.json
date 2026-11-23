@@ -1,6 +1,56 @@
 {
   "posts": [
     {
+      "id": "daisyrose-27b",
+      "url": "/daisyrose-27b.html",
+      "title": "DaisyRose-27B：只用强化学习、零蒸馏的多模态推理模型，Terminal Bench 4.1 从 5.6 到 12.0",
+      "date": "2026-11-23T14:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "DaisyRose-27B 是 RadixArk 的第一个开源模型：一个<strong>多模态推理模型</strong>，底座是 Qwen3.8-27B，但后训练<strong>只用了强化学习</strong>——没有监督微调（SFT）、没有从更大的模型蒸馏。约 1,200 个精挑的长程 agent 任务、会话最长 1M token、144 张 H200 训了 18 天，把 Terminal Bench 4.1 的 pass@1 从 5.6 拉到 12.0，图像理解、tokenizer、chat template 和 256K 上下文全部原样保留，是 Qwen3.8-27B 的<strong>即插即用替换</strong>。权重 Apache-2.0 开放，BF16 / FP8 / NVFP4 三种精度，社区量化生态也已经齐了。",
+      "minutes": 5,
+      "toc": [
+        {
+          "id": "daisyrose-27b-shi-shen-me",
+          "title": "DaisyRose-27B 是什么",
+          "level": 1
+        },
+        {
+          "id": "chun-rl-xun-lian",
+          "title": "纯 RL 训练：没有 SFT，也没有蒸馏",
+          "level": 1
+        },
+        {
+          "id": "shi-ben-biao",
+          "title": "基准",
+          "level": 1
+        },
+        {
+          "id": "drop-in-replace",
+          "title": "即插即用替换",
+          "level": 1
+        },
+        {
+          "id": "liang-hua-sheng-tai",
+          "title": "量化生态",
+          "level": 1
+        },
+        {
+          "id": "ru-he-yun-xing",
+          "title": "怎么跑",
+          "level": 1
+        }
+      ],
+      "body_sha256": "c7f1f3b199d8c31b0f0e8e927159f9a2d33f346ee8236118d3e4300c9db55e37"
+    },
+    {
       "id": "hrm-text",
       "url": "/hrm-text.html",
       "title": "HRM-Text：用 ~40B tokens、~1000 美元从零预训练一个 1B 基础模型",
@@ -1772,14 +1822,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 21
+      "count": 22
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 21
+      "count": 22
     },
     {
       "name": "diffusion",

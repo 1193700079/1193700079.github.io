@@ -1,6 +1,71 @@
 {
   "posts": [
     {
+      "id": "basalt-strata",
+      "url": "/basalt-strata.html",
+      "title": "16G 游戏卡跑 82G 千问：Strata 的内存分层，和 Basalt 快了多少",
+      "date": "2026-11-26T09:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "一张 16G 显存的卡怎么跑得动 80 多 GB 的千问？Strata 把 MoE 的路由专家常驻系统内存、显存只留缓存，cache miss 从内存流式读进显存再算。从它改良出的 Basalt 只动 CPU 调度层——更细的 row-range 任务切分、i-quant 走 AVX-VNNI、单文件 .basalt。社区实测 prefill 快 35–41%、decode 1.26–1.42 倍，「2 倍」只出现在带 AVX-VNNI 的桌面 CPU 上，真正的瓶颈在 CPU 侧串行专家点积和 PCIe，不在显卡算力。",
+      "minutes": 8,
+      "toc": [
+        {
+          "id": "yi-zhang-you-xi-ka-pao-dong-da-mo-xing",
+          "title": "一张游戏卡，怎么跑得动这么大的模型",
+          "level": 1
+        },
+        {
+          "id": "strata-shi-shen-me",
+          "title": "Strata 是什么",
+          "level": 1
+        },
+        {
+          "id": "basalt-gai-le-shen-me",
+          "title": "Basalt 改了什么",
+          "level": 1
+        },
+        {
+          "id": "san-ge-gai-dong-dian",
+          "title": "三个改动点",
+          "level": 2
+        },
+        {
+          "id": "kuai-duo-shao-bu-shi-liang-bei",
+          "title": "快多少，为什么不是 2 倍",
+          "level": 1
+        },
+        {
+          "id": "shi-ce-shu-zi",
+          "title": "实测数字",
+          "level": 2
+        },
+        {
+          "id": "ping-ning-zai-cpu-he-pcie",
+          "title": "瓶颈在 CPU 和 PCIe",
+          "level": 2
+        },
+        {
+          "id": "zen-me-pao",
+          "title": "怎么跑",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "42b1f2d6f02fe68b1eeb6f1ab7067fb6a48d25a2c82b5613020ba0827d06f9e9"
+    },
+    {
       "id": "harness-adapters-at-scale",
       "url": "/harness-adapters-at-scale.html",
       "title": "Harness Adapters at Scale：把 RL 训练放进真实 Agent 框架，LoRA 适配器全量交底",
@@ -1877,14 +1942,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 23
+      "count": 24
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 23
+      "count": 24
     },
     {
       "name": "diffusion",

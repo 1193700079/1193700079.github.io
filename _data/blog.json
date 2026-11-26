@@ -1,6 +1,61 @@
 {
   "posts": [
     {
+      "id": "harness-adapters-at-scale",
+      "url": "/harness-adapters-at-scale.html",
+      "title": "Harness Adapters at Scale：把 RL 训练放进真实 Agent 框架，LoRA 适配器全量交底",
+      "date": "2026-11-26T09:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "<p>FineEnvs 的长文 harness adapters at scale：把 RL 训练放进真实 Agent harness，基座冻结、LoRA 训出三个 harness 专家，rollout 由 harness 原样跑、proxy 录真实 token，不重写 agent loop。工具调用 −56~72%、token −53~70%，三个专家合成 super-adapter 后开 thinking 反而测出最强，全部评测轨迹公开在 HF Bucket。</p>",
+      "minutes": 5,
+      "toc": [
+        {
+          "id": "xun-lian-xie-yi-harness-yuan-yang-pai",
+          "title": "训练协议：harness 原样跑",
+          "level": 1
+        },
+        {
+          "id": "ren-wu-ji-gou-jian",
+          "title": "任务集构建",
+          "level": 1
+        },
+        {
+          "id": "xun-lian-xi-jie",
+          "title": "训练细节",
+          "level": 1
+        },
+        {
+          "id": "super-adapter-he-cheng",
+          "title": "Super-adapter 合成",
+          "level": 1
+        },
+        {
+          "id": "jie-guo-yu-pan-zhi-nui-li-xue",
+          "title": "结果与 reasoning leakage",
+          "level": 1
+        },
+        {
+          "id": "ju-ding-shu-ju-bucket",
+          "title": "交底数据：Bucket",
+          "level": 1
+        },
+        {
+          "id": "yi-ti-pan",
+          "title": "一句话评",
+          "level": 1
+        }
+      ],
+      "body_sha256": "482e8333814db8c58f175a9820d96aad6a159832d714e17bdd302117ecc30c21"
+    },
+    {
       "id": "daisyrose-27b",
       "url": "/daisyrose-27b.html",
       "title": "DaisyRose-27B：只用强化学习、零蒸馏的多模态推理模型，Terminal Bench 4.1 从 5.6 到 12.0",
@@ -1822,14 +1877,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 22
+      "count": 23
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 22
+      "count": 23
     },
     {
       "name": "diffusion",

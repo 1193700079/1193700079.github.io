@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+<feed xmlns="http://www.w3.org/2005/Atom">  <entry>
+    <title>Harness Adapters at Scale：把 RL 训练放进真实 Agent 框架，LoRA 适配器全量交底</title>
+    <link href="https://1193700079.github.io/harness-adapters-at-scale.html"/>
+    <id>https://1193700079.github.io/harness-adapters-at-scale.html</id>
+    <published>2026-11-26T09:00:00.000Z</published>
+    <updated>2026-11-26T09:00:00.000Z</updated>
+    <summary type="html">&lt;p&gt;FineEnvs 的长文 harness adapters at scale：把 RL 训练放进真实 Agent harness，基座冻结、LoRA 训出三个 harness 专家，rollout 由 harness 原样跑、proxy 录真实 token，不重写 agent loop。工具调用 −56~72%、token −53~70%，三个专家合成 super-adapter 后开 thinking 反而测出最强，全部评测轨迹公开在 HF Bucket。&lt;/p&gt;</summary>
+    <category term="技术阅读" scheme="https://1193700079.github.io/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/"/>
+    <category term="llm" scheme="https://1193700079.github.io/tags/llm/"/>
+  </entry>
   <entry>
     <title>DaisyRose-27B：只用强化学习、零蒸馏的多模态推理模型，Terminal Bench 4.1 从 5.6 到 12.0</title>
     <link href="https://1193700079.github.io/daisyrose-27b.html"/>

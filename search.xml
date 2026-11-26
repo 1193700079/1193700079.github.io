@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<search>
+<search>  <entry>
+    <title>Harness Adapters at Scale：把 RL 训练放进真实 Agent 框架，LoRA 适配器全量交底</title>
+    <url>/harness-adapters-at-scale.html</url>
+    <content><![CDATA[<p>FineEnvs 的长文 harness adapters at scale：把 RL 训练放进真实 Agent harness，基座冻结、LoRA 训出三个 harness 专家，rollout 由 harness 原样跑、proxy 录真实 token，不重写 agent loop。工具调用 −56~72%、token −53~70%，三个专家合成 super-adapter 后开 thinking 反而测出最强，全部评测轨迹公开在 HF Bucket。</p><span id="more"></span>]]></content>
+  </entry>
   <entry>
     <title>DaisyRose-27B：只用强化学习、零蒸馏的多模态推理模型，Terminal Bench 4.1 从 5.6 到 12.0</title>
     <url>/daisyrose-27b.html</url>

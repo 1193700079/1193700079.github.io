@@ -1,0 +1,54 @@
+---
+layout: "blog-post"
+post_id: "loop-transformer"
+title: "不堆深度：Loop Transformer 把一个 block 循环跑 N 次，还带状态记忆"
+description: "标准 Transformer 的宽度靠堆深度，Loop Transformer 反过来：一个 block 反复执行 N 次，配合循环参数和记忆向量。这篇讲它怎么做、梯度怎么循环展开训练、和 RNN-Transformer 混合架构的关系，以及参数量与计算量的 trade-off。"
+---
+{% raw %}
+<p><strong>不堆深度，而是循环。</strong>这是 Apple 和 Amazon 的 Loop Transformer 论文（arXiv:2410.13826）的核心思路。一个 Transformer block，反复执行 N 次，每次执行时通过一组循环参数和记忆向量读取并更新状态。效果是：用远少于标准 Transformer 的参数量，达到同等或更好的性能，同时把推理的计算量摊到 N 次循环里。</p>
+<span id="more"></span>
+
+<h1 id="yi-ge-block-luan-huan-n-ci"><a href="#yi-ge-block-luan-huan-n-ci" class="headerlink" title="一个 block，循环 N 次"></a>一个 block，循环 N 次</h1>
+<p>标准 Transformer 的推理是：输入 → Block₁ → Block₂ → … → Block_L → 输出。L 层固定堆叠，每层参数独立，显存占用随 L 线性增长。</p>
+<p>Loop Transformer 的做法：<strong>只有一个（或少数几个）block，把它循环执行 N 次</strong>。每次循环时，block 读取一组循环参数（loop parameters）和记忆向量（memory vector），更新内部状态，输出给下一次循环。N 次循环后得到最终表示。</p>
+<p>这相当于把标准 Transformer 的深度轴从空间（堆叠的层）换成了时间（循环的次数）。同一个 block 的权重被复用 N 次，而循环参数和记忆向量充当跨循环的状态载体。</p>
+
+<h1 id="xun-huan-can-shu-hui-xun-huan-wei-dou-bu-yi-yang"><a href="#xun-huan-can-shu-hui-xun-huan-wei-dou-bu-yi-yang" class="headerlink" title="循环参数：每次循环都不一样"></a>循环参数：每次循环都不一样</h1>
+<p>如果 N 次循环用的是完全相同的参数，整个结构退化成同一个函数调用 N 次，表达能力受限。Loop Transformer 给每次循环配了一组专属的<strong>循环参数</strong>。</p>
+<p>这些参数不是完整的 block 权重（那样就等价于 N 个独立 block 了），而是轻量级的调制参数：缩放、门控、偏置等。记忆向量则是一个固定大小的向量，在每次循环中被更新，充当循环间的记忆总线。</p>
+<p>这样，N 次循环的每个迭代都略有不同，但共享绝大部分权重。参数量 ≈ 1 个 block + N 组轻量参数，远小于 N 个独立 block。</p>
+
+<h1 id="can-shu-yu-ji-suan-dui-bi"><a href="#can-shu-yu-ji-suan-dui-bi" class="headerlink" title="参数与计算对比"></a>参数与计算对比</h1>
+<p>设标准 Transformer 有 L 层，每层参数量 P。Loop Transformer 有 N 次循环，每次循环用 1 个 block（参数量 B）和一组循环参数（参数量 P_loop，通常远小于 P）：</p>
+<table>
+<thead><tr><th>维度</th><th>标准 Transformer（L 层）</th><th>Loop Transformer（N 次循环）</th></tr></thead>
+<tbody>
+<tr><td>参数量</td><td>L × P</td><td>B + N × P_loop（P_loop ≪ P）</td></tr>
+<tr><td>推理计算量</td><td>L 次 forward，顺序执行</td><td>N 次循环 forward，顺序执行（有状态依赖）</td></tr>
+<tr><td>显存占用（推理）</td><td>L 份权重</td><td>1 份 block 权重 + N 份轻量循环参数</td></tr>
+<tr><td>训练梯度</td><td>直接反向传播，L 层各存激活</td><td>循环展开 N 次再反向展开（BPTT）</td></tr>
+</tbody>
+</table>
+<p>关键：Loop Transformer 的参数量几乎不随 N 增长（循环参数很轻量），而推理计算量随 N 线性增长。可以用更少的参数换取更多的深度计算——在参数受限的场景（移动端、端侧推理）尤其有价值。</p>
+
+<h1 id="xun-lian-zhan-kai-hui-fang-ye-zhan-kai"><a href="#xun-lian-zhan-kai-hui-fang-ye-zhan-kai" class="headerlink" title="训练：展开，反向也展开"></a>训练：展开，反向也展开</h1>
+<p>训练时需要把 N 次循环<strong>循环展开（unroll）</strong>成 N 个串联的 block，然后对展开后的计算图做反向传播。梯度通过 N 次循环传播，机制和 RNN 的 BPTT 相同。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">def loop_transformer(x, n_loops, block, loop_params, memory):</span><br><span class="line">    # x: [B, T, D] 输入</span><br><span class="line">    # block: 单个 Transformer block</span><br><span class="line">    # loop_params: [N] 每组循环参数（轻量调制）</span><br><span class="line">    # memory: [N, D] 记忆向量</span><br><span class="line">    for i in range(n_loops):</span><br><span class="line">        # 读取第 i 组的循环参数</span><br><span class="line">        theta = loop_params[i]           # 轻量调制参数</span><br><span class="line">        # block 执行，记忆向量被更新</span><br><span class="line">        x, memory[i] = block(x, theta, memory[i])</span><br><span class="line">    return x</span><br><span class="line">    # 反向传播：autograd 自动沿展开的 N 次循环回传梯度</span><br></pre></td></tr></table></figure>
+<p>反向传播时，PyTorch/TF 的 autograd 沿着展开的计算图逐循环回传梯度，每个循环的 block 权重接收来自后续所有循环的梯度之和。这和 RNN 的 BPTT 是同一套机制。</p>
+<p>训练时 N 次循环的激活都要保存，显存占用 ≈ N 份激活 + 1 份 block 权重。推理时只需 1 份 block 权重 + N 份轻量循环参数，显存大幅低于标准 L 层 Transformer。</p>
+
+<h1 id="xun-huan-hun-he-rnn-yu-transformer-de-qiao"><a href="#xun-huan-hun-he-rnn-yu-transformer-de-qiao" class="headerlink" title="循环混合：RNN 与 Transformer 的桥"></a>循环混合：RNN 与 Transformer 的桥</h1>
+<p>Loop Transformer 的结构其实是 RNN 和 Transformer 的循环混合——一个每步执行一个 Transformer block 的 RNN。这和 Hyper-Transformer、Recurrence Transformer、DeepNet 的思路是同一族。</p>
+<p>DeepNet（arXiv:2402.02940）用 Hyper-Connections 替代固定残差连接，让每一层通过可学习的路由动态聚合前序所有层的输出。Loop Transformer 的循环参数可以看作 Hyper-Connections 的循环版：循环参数决定每次循环如何调制 block 的行为。</p>
+<p>从 RNN 视角看，Loop Transformer 是一个每步做完整 attention + FFN 的 RNN。从 Transformer 视角看，它是一个深度为 N 的 Transformer，但所有层共享权重、只保留循环参数。这个双重身份让它同时受益于 RNN 的权重共享和 Transformer 的表达力。</p>
+
+<h1 id="ju-xian-yu-shi-yong-chang-jing"><a href="#ju-xian-yu-shi-yong-chang-jing" class="headerlink" title="局限与适用场景"></a>局限与适用场景</h1>
+<p>循环展开训练需要 N 份激活，训练显存随 N 增长，和标准 L 层 Transformer 一样。推理显存虽低，但 N 次循环有状态依赖，只能顺序执行，推理延迟随 N 线性增长。这使得 Loop Transformer 更适合<strong>参数受限但计算不敏感</strong>的场景：端侧推理、小模型部署、参数预算紧张但算力充足的环境。</p>
+<p>对于大规模高吞吐推理，N 次循环的顺序执行是硬伤。这是它和标准 Transformer 最核心的 trade-off。</p>
+
+<h1 id="can-kao-lian-jie"><a href="#can-kao-lian-jie" class="headerlink" title="参考链接"></a>参考链接</h1>
+<p>Loop Transformer：arXiv:2410.13826（Apple / Amazon）</p>
+<p>DeepNet：arXiv:2402.02940</p>
+<p>Hyper-Transformer：arXiv:2402.10929</p>
+<div id="reword-out"><div id="reward-btn">打赏</div></div>
+{% endraw %}

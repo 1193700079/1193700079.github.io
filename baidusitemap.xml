@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset>
-<url><loc>https://1193700079.github.io/harness-adapters-at-scale.html</loc></url><url><loc>https://1193700079.github.io/daisyrose-27b.html</loc></url>
+<url><loc>https://1193700079.github.io/loop-transformer.html</loc></url>
+<url><loc>https://1193700079.github.io/basalt-strata.html</loc></url>
+<url><loc>https://1193700079.github.io/harness-adapters-at-scale.html</loc></url>
+<url><loc>https://1193700079.github.io/daisyrose-27b.html</loc></url>
 <url><loc>https://1193700079.github.io/hrm-text.html</loc></url>
 <url><loc>https://1193700079.github.io/no-long-context-needed.html</loc></url>
 <url><loc>https://1193700079.github.io/rollout-rl.html</loc></url>
@@ -22,5 +25,4 @@
 <url><loc>https://1193700079.github.io/rl-diffusion-survey.html</loc></url>
 <url><loc>https://1193700079.github.io/leapquant.html</loc></url>
 <url><loc>https://1193700079.github.io/qwen-sft-6x.html</loc></url>
-<url><loc>https://1193700079.github.io/basalt-strata.html</loc></url>
 </urlset>

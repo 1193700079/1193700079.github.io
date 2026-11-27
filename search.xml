@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>不堆深度：Loop Transformer 把一个 block 循环跑 N 次，还带状态记忆</title>
+    <url>/loop-transformer.html</url>
+    <content><![CDATA[标准 Transformer 的宽度靠堆深度，Loop Transformer 反过来：一个 block 反复执行 N 次，配合循环参数和记忆向量。这篇讲它怎么做、梯度怎么循环展开训练、和 RNN-Transformer 混合架构的关系，以及参数量与计算量的 trade-off。<span id="more"></span>]]></content>
+  </entry>
+  <entry>
     <title>16G 游戏卡跑 82G 千问：Strata 的内存分层，和 Basalt 快了多少</title>
     <url>/basalt-strata.html</url>
     <content><![CDATA[一张 16G 显存的卡怎么跑得动 80 多 GB 的千问？Strata 把 MoE 的路由专家常驻系统内存、显存只留缓存，cache miss 从内存流式读进显存再算。从它改良出的 Basalt 只动 CPU 调度层——更细的 row-range 任务切分、i-quant 走 AVX-VNNI、单文件 .basalt。社区实测 prefill 快 35–41%、decode 1.26–1.42 倍，「2 倍」只出现在带 AVX-VNNI 的桌面 CPU 上，真正的瓶颈在 CPU 侧串行专家点积和 PCIe，不在显卡算力。<span id="more"></span>]]></content>

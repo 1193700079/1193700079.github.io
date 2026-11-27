@@ -1,6 +1,61 @@
 {
   "posts": [
     {
+      "id": "loop-transformer",
+      "url": "/loop-transformer.html",
+      "title": "不堆深度：Loop Transformer 把一个 block 循环跑 N 次，还带状态记忆",
+      "date": "2026-11-27T10:00:00.000Z",
+      "year": "2026",
+      "month": "2026-11",
+      "category": "技术阅读",
+      "category_url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
+      "tag": "llm",
+      "tag_url": "/tags/llm/",
+      "tags": [
+        "llm"
+      ],
+      "summary": "标准 Transformer 的宽度靠堆深度，Loop Transformer 反过来：一个 block 反复执行 N 次，配合循环参数和记忆向量。这篇讲它怎么做、梯度怎么循环展开训练、和 RNN-Transformer 混合架构的关系，以及参数量与计算量的 trade-off。",
+      "minutes": 6,
+      "toc": [
+        {
+          "id": "yi-ge-block-luan-huan-n-ci",
+          "title": "一个 block，循环 N 次",
+          "level": 1
+        },
+        {
+          "id": "xun-huan-can-shu-hui-xun-huan-wei-dou-bu-yi-yang",
+          "title": "循环参数：每次循环都不一样",
+          "level": 1
+        },
+        {
+          "id": "can-shu-yu-ji-suan-dui-bi",
+          "title": "参数与计算对比",
+          "level": 1
+        },
+        {
+          "id": "xun-lian-zhan-kai-hui-fang-ye-zhan-kai",
+          "title": "训练：展开，反向也展开",
+          "level": 1
+        },
+        {
+          "id": "xun-huan-hun-he-rnn-yu-transformer-de-qiao",
+          "title": "循环混合：RNN 与 Transformer 的桥",
+          "level": 1
+        },
+        {
+          "id": "ju-xian-yu-shi-yong-chang-jing",
+          "title": "局限与适用场景",
+          "level": 1
+        },
+        {
+          "id": "can-kao-lian-jie",
+          "title": "参考链接",
+          "level": 1
+        }
+      ],
+      "body_sha256": "4251319231e97ea40fb8e28fbdce3a8499d50decd86d28c9754dde88d8571342"
+    },
+    {
       "id": "basalt-strata",
       "url": "/basalt-strata.html",
       "title": "16G 游戏卡跑 82G 千问：Strata 的内存分层，和 Basalt 快了多少",
@@ -1942,14 +1997,14 @@
     {
       "name": "技术阅读",
       "url": "/categories/%E6%8A%80%E6%9C%AF%E9%98%85%E8%AF%BB/",
-      "count": 24
+      "count": 25
     }
   ],
   "tags": [
     {
       "name": "llm",
       "url": "/tags/llm/",
-      "count": 24
+      "count": 25
     },
     {
       "name": "diffusion",
